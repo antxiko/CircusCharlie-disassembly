@@ -1303,3 +1303,216 @@ C 0x5095 el tipo de fase
 C 0x509d por cuatro
 C 0x509f la tabla de las fases normales
 C 0x50a6 y por ocho para la fase 1, que gasta el doble
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x50aa la tabla de patrones de sprite de esa pose
+C 0x50b0 el bufer de atributos en RAM
+C 0x50b3 el primer sprite
+C 0x50b6 dieciseis pixeles mas abajo: el segundo
+C 0x50bd el tipo de fase
+C 0x50c7 en la fase 1 el jugador son CUATRO sprites, no dos
+C 0x50cc ocho a la izquierda
+C 0x50d3 y dieciseis a la derecha
+L 0x50d8 dibuja_al_jugador_de_la_fase_4
+B 0x50d8 EL JUGADOR DE LA FASE 4, que lleva TRES sprites y una animacion propia. El paso sale de los bits 2 y 3 del contador de cuadros -o sea, cambia cada cuatro cuadros- y se multiplica por tres, que es lo que ocupa cada paso en la tabla de 0x5155.
+C 0x50d8 el contador de cuadros
+C 0x50db dos giros: uno de cada cuatro
+C 0x50dd cuatro pasos
+C 0x50e0 por tres
+C 0x50e2 la tabla de doce bytes, cuatro poses de tres
+C 0x50e8 el estado del jugador
+C 0x50f5 la fila de arriba
+C 0x50f8 cinco pixeles a la izquierda
+C 0x50ff y dieciseis a la derecha
+C 0x5105 la fila de abajo
+L 0x5109 mete_dos_sprites
+B 0x5109 METER UN SPRITE EN EL BUFER: cuatro bytes -fila, columna, patron y color-, con el patron sacado de la tabla que apunta DE. La puerta de 0x5109 mete DOS de golpe, que es lo que ocupa una figura de 16x16 partida en dos.
+C 0x510c la fila
+C 0x510e la columna
+C 0x5110 el patron, de la tabla
+C 0x5114 y el color se deja como estaba
+L 0x5161 arranca_gesto_con_cero
+B 0x5161 ARRANCAR UN GESTO. HL trae la rampa que hay que recorrer y A su sentido; queda apuntada en (0xE200), la senal en (0xE202) y el paso a cero. Las dos puertas solo se diferencian en A, y el `jr $+4` de 0x5162 salta POR ENCIMA del `ld a,001h`.
+C 0x5161 sentido 0
+C 0x5164 y por aqui se entraria con sentido 1
+C 0x5166 la rampa que hay que recorrer
+C 0x5169 la senal de "hay gesto en marcha"
+C 0x516d y el paso, a cero
+L 0x5171 avanza_el_gesto
+B 0x5171 AVANZAR UN GESTO UN PASO. El sentido de (0xE202) decide si el paso sube o baja, y a partir del octavo cambia la pose de 1 a 4.
+C 0x5171 el sentido
+C 0x5178 el bit 0
+C 0x517c hacia delante
+C 0x517f o hacia atras
+C 0x5181 a partir del paso 8
+C 0x5187 la otra pose
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x518c la posicion del jugador
+C 0x518f por donde va la rampa
+C 0x5195 el desplazamiento de este paso
+C 0x5198 al reves si el gesto va marcha atras
+C 0x519b y se aplica
+C 0x51a1 la rampa avanza
+C 0x51a4 o retrocede
+C 0x51a6 un 0xFF en la rampa es el final
+C 0x51ac se baja la senal: se acabo el gesto
+L 0x5200 mira_si_pisa_el_borde
+B 0x5200 MIRAR SI EL JUGADOR PISA EL BORDE de alguno de los SEIS tramos de 0xE170. Basta con cinco pixeles de margen; si ninguno casa, se sale con la bandera limpia.
+C 0x5200 seis tramos
+C 0x5205 la referencia
+C 0x520a cinco pixeles de margen
+C 0x520d dos bytes por tramo
+L 0x5213 se_acaba_de_pulsar_boton
+B 0x5213 EL FLANCO DEL BOTON. Invierte la lectura ANTERIOR y la cruza con la de ahora: solo queda a uno el boton que estaba suelto y ahora esta pulsado. Es lo que hace que mantener apretado no cuente como pulsar dos veces.
+C 0x5216 lo de antes
+C 0x5217 invertido
+C 0x5218 los dos botones
+C 0x521b cruzado con lo de ahora: el flanco
+L 0x5238 mira_la_caja_de_5238
+B 0x5238 OTRA CAJA DE CONTACTO, esta de 0x10 por 0x26: mas estrecha en una coordenada que en la otra, que es como se afinan los saltos.
+C 0x5241 dieciseis pixeles
+C 0x5248 y treinta y ocho en la otra
+L 0x524b mira_los_tres_moviles
+B 0x524b LA CAJA CONTRA LOS TRES MOVILES de 0xE150. El desplazamiento cambia segun el bit 7 del movil -0x18 o 0x10-, o sea que un movil "mira" a un lado o a otro y su caja se corre con el.
+C 0x524b tres moviles
+C 0x5253 la referencia
+C 0x5257 veintidos pixeles
+C 0x525c el bit 7 dice hacia donde mira
+C 0x5261 veinticuatro de desplazamiento
+C 0x5265 o dieciseis
+C 0x5269 y treinta y ocho de caja
+C 0x526c dos bytes por movil
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x5272 mira_la_caja_del_gesto
+C 0x5272 solo si hay gesto en marcha
+C 0x5280 treinta y dos pixeles
+C 0x5287 y cuarenta y ocho en la otra
+L 0x528a baja_la_bonificacion_cada_ocho
+C 0x528a el contador de cuadros
+C 0x528d uno de cada ocho
+L 0x5290 resta_a_la_bonificacion
+B 0x5290 RESTAR A LA BONIFICACION, en BCD. Baja de DIECISEIS en dieciseis con `sub 010h / daa`, y si hay acarreo se le quita uno al byte de arriba. Aqui es donde se gasta el 5000 con el que empieza la fase.
+C 0x5294 dieciseis menos
+C 0x5296 en BCD
+C 0x529c el byte alto, uno menos
+L 0x52a0 pinta_la_bonificacion_y_mira_el_final
+C 0x52a0 la celda de la bonificacion
+C 0x52a3 dos bytes, cuatro digitos
+C 0x52a8 la escena en curso
+C 0x52ab solo la escena 11 mira el final
+C 0x52b1 0x10 en el byte alto: queda mil y pico
+C 0x52b8 y si llego a cero de verdad, el jugador se ha quedado sin tiempo
+L 0x52bb avisa_de_que_queda_poco
+B 0x52bb EL AVISO DE QUE SE ACABA EL TIEMPO, y no es un sonido fijo: el tipo de fase elige entre tres -0x8D, 0x8B y 0x89-, y ademas cambia el canal (B). El `ex af,af'` guarda el numero mientras se coloca el otro dato.
+C 0x52be el tipo de fase
+C 0x52c5 el aviso de las fases de tipo 0
+C 0x52cb el de las de tipo par
+C 0x52d1 y el de las demas
+L 0x52d9 mira_los_moviles_de_cerca
+B 0x52d9 LA SEGUNDA CAJA CONTRA LOS TRES MOVILES, esta mucho mas estrecha: DOS pixeles en una coordenada. Y como en la otra, el margen en la segunda -0x3F o 0x2F- depende de hacia donde mire el movil.
+C 0x52d9 tres moviles
+C 0x52e5 dos pixeles nada mas
+C 0x52ea hacia donde mira
+C 0x52ef sesenta y tres
+C 0x52f3 o cuarenta y siete
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x5301 apunta_objeto_recogido
+B 0x5301 APUNTAR UN OBJETO RECOGIDO. Del contador del bucle sale el indice al reves -`ld a,003h / sub b`, o `006h / sub b` por la otra puerta-, se apaga esa casilla de 0xE210 y se sube el contador de 0xE218. Si la casilla ya estaba a cero se sale sin contar nada, que es lo que impide cobrar dos veces el mismo objeto.
+C 0x5301 tres menos lo que queda: el indice
+C 0x5304 la lista de casillas
+C 0x530b ya estaba cogido: no se cuenta
+C 0x530e se apaga
+C 0x5312 y uno mas al contador
+L 0x5314 apunta_objeto_de_seis
+C 0x5314 la misma cuenta, pero sobre seis
+L 0x5319 apunta_el_objeto_de_e217
+C 0x531c la casilla suelta de 0xE217
+C 0x5322 y se marca el bit 7 en la de al lado
+L 0x5326 mira_todo_lo_recogible
+B 0x5326 EL BARRIDO DE LO QUE SE PUEDE RECOGER: los SEIS de 0xE170 y, ademas, el suelto de 0xE1B0. Cada uno se mide con la misma caja estrecha.
+C 0x5326 seis
+C 0x5331 dos bytes cada uno
+C 0x5334 y el septimo, aparte
+L 0x533d caja_estrecha
+B 0x533d LA CAJA MAS ESTRECHA DEL CARTUCHO: DOS pixeles. El desplazamiento es 0x38 en general y 0x20 en las fases de tipo 3, que es lo que la corre a su sitio en esa fase.
+C 0x533d el tipo de fase
+C 0x5343 cincuenta y seis
+C 0x5347 o treinta y dos en la fase 3
+C 0x534a dos pixeles de margen
+L 0x534d que_direccion_se_pulsa
+B 0x534d QUE DIRECCION SE ESTA PULSANDO, devuelta como -1, 0 o 1. Si el jugador esta en el estado 0 vale la lectura de este cuadro; si no, la congelada de (0xE138). El `ccf / sbc a,a` convierte el acarreo en 0x00 o 0xFF de una vez.
+C 0x534d el estado del jugador
+C 0x5351 corriendo: lo que se pulsa ahora
+C 0x5356 y si no, lo que se pulsaba al empezar el gesto
+C 0x5359 los dos bits de direccion
+C 0x535b nada pulsado
+C 0x535f 0xFF o 0x00 segun el acarreo
+C 0x5361 y +1: queda -1, 0 o 1
+L 0x5363 dibuja_el_tramo
+C 0x5363 el patron de relleno
+C 0x5368 cuatro filas por dos columnas
+L 0x536f mueve_el_decorado
+B 0x536f EL DECORADO QUE SE MUEVE. Suma -0x50 a la posicion y, si el byte alto pasa de 5, no hay nada que hacer. Es el bucle que va sacando por la izquierda lo que ya se ha pasado.
+C 0x536f la posicion del decorado
+C 0x5372 ochenta hacia atras
+C 0x5377 fuera de la pantalla
+C 0x537b la fila del decorado
+C 0x5381 que direccion se pulsa
+C 0x5385 y se guarda para el resto del cuadro
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x539e el contador de cuadros
+C 0x53a1 el bit 2: el dibujo cambia cada cuatro cuadros
+C 0x53a3 y de ahi sale el patron, 0xA0 o 0xA4
+C 0x53b4 la posicion queda apuntada en (0xE156)
+C 0x53b8 la tabla de cuatro rectangulos de 2x4
+C 0x53be y se elige uno por la columna
+L 0x53be elige_rectangulo_y_pinta
+B 0x53be PINTAR UN RECTANGULO ELEGIDO POR LA COLUMNA. La tabla trae CUATRO punteros y `ld a,e / and 006h` se queda con dos bits de la columna: cuatro variantes del mismo dibujo, una por cada posicion posible dentro de la celda. Es el apano para que algo que se mueve a media celda no se vea saltar.
+C 0x53bf dos bits de la columna
+C 0x53c4 y de ahi el rectangulo que toca
+L 0x53c8 pinta_rectangulo
+B 0x53c8 PINTAR UN RECTANGULO de B filas por C columnas, leyendo los indices de corrido. El `ld a,e / and 01fh / jr z` corta la fila al llegar al borde derecho de la pantalla, de modo que un dibujo a medio salir no se derrama en la fila de abajo.
+C 0x53cc el bit 6: la marca de escritura del VDP
+C 0x53d4 un indice de patron
+C 0x53db la columna
+C 0x53dc final de fila: se corta
+C 0x53e0 y si no, la celda siguiente
+C 0x53e4 la fila de abajo, 32 celdas
+C 0x53eb el ancho, para saltar a la fila siguiente del dibujo
+L 0x53f3 posicion_a_celda
+B 0x53f3 DE POSICION A CELDA DE PANTALLA. Divide las dos coordenadas entre ocho de una vez, encadenando los `rra` de D con los `rr e` de E, y le pega el 0x38 de la tabla de nombres. Tres bits de cada una, que es justo el tamano de un patron.
+C 0x53f4 cuatro giros
+C 0x53f8 arrastrando el acarreo a la otra coordenada
+C 0x5400 lo que queda de la fila
+C 0x5402 mas la pagina de la tabla de nombres
+L 0x5406 direccion_pulsada_cruda
+C 0x5406 el estado del jugador
+C 0x5409 corriendo: la lectura de ahora
+C 0x540f y si no, la congelada
+C 0x5413 los dos bits de direccion
+L 0x5416 mueve_los_tres_moviles
+B 0x5416 EL BUCLE DE LOS TRES MOVILES. Cada uno tiene su byte de estado en 0xE160, su posicion en 0xE150 y su hueco de sprite en 0xE100; segun el estado se va por un sitio o por otro.
+C 0x5416 el estado de cada movil
+C 0x541a su hueco en el bufer de sprites
+C 0x541d y su posicion
+C 0x5420 tres
+C 0x5426 estado cero: no esta activo
