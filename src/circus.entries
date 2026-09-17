@@ -1,0 +1,58 @@
+# Puntos de entrada que el trazado NO puede deducir solo.
+#
+# Cada uno lleva escrito POR QUE hace falta.
+
+# El arranque: la cabecera del cartucho da INIT en 0x407B.
+0x407B   # INIT, la direccion que trae la cabecera del cartucho
+
+# ======================================================================
+# EL GANCHO DE LA INTERRUPCION
+# ======================================================================
+# INIT no arranca ningun bucle de juego: escribe un `jp` (0xC3) en 0xFD9A y la
+# direccion 0x402C en 0xFD9B, que es H.KEYI, y se queda en el `jr $` de 0x40A9.
+# TODO el juego cuelga de la interrupcion, una vez por cuadro.
+0x402C   # H.KEYI: lo engancha INIT en 0x4083 (`ld hl,0402ch / ld (0fd9bh),hl`)
+
+# ======================================================================
+# LAS TABLAS PEGADAS DETRAS DEL `call`
+# ======================================================================
+# El despachador de 0x404E es el de esta familia de Konami:
+#
+#     add a,a / pop hl / call L_4022 / ld e,(hl) / inc hl / ld d,(hl)
+#     ex de,hl / jp (hl)
+#
+# El `pop hl` recupera su propia direccion de retorno, que es donde empieza la
+# tabla, porque la tabla va PEGADA detras del `call`. El trazado no puede
+# deducirlas siguiendo saltos.
+#
+# Cuantas entradas tiene no se estima: lo fija el encaje de que su PRIMERA
+# entrada apunte justo detras de la tabla, que es donde sigue el codigo.
+#
+#   0x40C7 + 17*2 = 0x40E9, y su primera entrada es 0x40E9
+#   0x40C7 + 17*2 = 0x40E9, y su primera entrada es 0x40E9
+!tabla 0x40c7  17   # el reparto de escenas, desde el `call L_404E` de 0x40C4
+!tabla 0x4c93   5   # desde 0x4C90; cierra en 0x4C9D, que es su entrada mas baja
+!tabla 0x4cea   5   # desde 0x4CE7. NO cierra sola (la entrada mas baja, 0x4CFE, cae
+                    # por detras de 0x4CF4): cinco es el TECHO que deja el encaje, y
+                    # lo confirma el presupuesto, que no deja hueco en 0x4CF4
+!tabla 0x5fef   5   # desde 0x5FEC; cierra en 0x5FF9, su entrada mas baja
+!tabla 0x60b6   5   # desde 0x60B3; cierra en 0x60C0, su entrada mas baja
+
+# ======================================================================
+# LAS DIRECCIONES DE RETORNO EMPUJADAS A MANO
+# ======================================================================
+# 0x40AB elige una de dos y la APILA antes de caer en el despachador:
+#
+#     ld a,(0e002h) / and 040h
+#     ld hl,044bah / jr nz,L_40BC / ld hl,0477dh
+#     L_40BC: ld a,(0e000h) / cp 008h / jr z,L_40C4 / push hl
+#
+# O sea que la escena despachada, al hacer `ret`, sigue por 0x44BA o por
+# 0x477D. El trazado no puede seguir un retorno fabricado. (Y con la escena 8
+# no se apila nada: ese `jr z` se salta el `push`.)
+0x44BA   # retorno apilado por 0x40AB cuando el bit 6 de (0xE002) esta a uno
+0x477D   # retorno apilado por 0x40AB cuando esta a cero
+
+# 0x5FE5 hace lo mismo antes de su despachador: `ld hl,0699dh / push hl` y cae
+# en el `call L_404E` de 0x5FEC, o sea que la subescena vuelve por 0x699D.
+0x699D   # retorno apilado por 0x5FE5

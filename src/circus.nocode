@@ -1,0 +1,5 @@
+# Zonas que NO son codigo aunque el trazado pueda entrar en ellas.
+
+# La cabecera del cartucho: "AB" y las cuatro direcciones de la ROM, mas los
+# seis bytes reservados.
+0x4000 0x4010

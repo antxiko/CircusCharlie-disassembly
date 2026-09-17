@@ -1,0 +1,105 @@
+# ======================================================================
+# CIRCUS CHARLIE (RC-712) - anotaciones del desensamblado
+# ======================================================================
+# Cada directiva D declara un rango de datos con su nombre y con la MEDIDA de
+# la que sale. Ningun limite esta estimado a ojo: los guiones de rotulos los
+# mide tools/guiones.py ejecutando el propio interprete del cartucho, y los
+# bloques comprimidos tools/rle.py ejecutando su descompresor.
+
+# ======================================================================
+# LA CABECERA
+# ======================================================================
+D 0x4000 0x4010 cabecera_del_cartucho  "AB" y la direccion de INIT (0x407B); STATEMENT, DEVICE y TEXT a cero, y los seis bytes reservados tambien
+F 0x4000 w
+
+# ======================================================================
+# EL REPARTO DE ESCENAS
+# ======================================================================
+# La tabla va PEGADA detras del `call L_404E` de 0x40C4 -el despachador de
+# 0x404E hace `add a,a / pop hl / call L_4022 / ld e,(hl) / inc hl / ld d,(hl)
+# / ex de,hl / jp (hl)`-: el `pop hl` recupera su propia direccion de retorno,
+# que es la tabla.
+#
+# El encaje que fija la cuenta: la tabla acaba justo donde empieza su primera
+# entrada. 0x40C7 + 17*2 = 0x40E9, y la primera palabra es 0x40E9.
+D 0x40c7 0x40e9 tabla_de_escenas  17 entradas, pegada detras del call del despachador; la primera apunta a 0x40E9, justo detras de la tabla
+F 0x40c7 w
+
+# Las otras cuatro tablas del mismo despachador, medidas igual.
+D 0x4c93 0x4c9d tabla_4C93  5 entradas, desde el call de 0x4C90; cierra en 0x4C9D, que es su entrada mas baja
+F 0x4c93 w
+D 0x4cea 0x4cf4 tabla_4CEA  5 entradas, desde el call de 0x4CE7; no cierra sola -su entrada mas baja cae por detras-, cinco es el techo del encaje y el presupuesto no deja hueco detras
+F 0x4cea w
+D 0x5fef 0x5ff9 tabla_5FEF  5 entradas, desde el call de 0x5FEC; cierra en 0x5FF9
+F 0x5fef w
+D 0x60b6 0x60c0 tabla_60B6  5 entradas, desde el call de 0x60B3; cierra en 0x60C0
+F 0x60b6 w
+
+# ======================================================================
+# LA GEOMETRIA DE LA PANTALLA
+# ======================================================================
+# Los ocho bytes que L_4708 copia a 0xE038 y vuelca en R0..R7 con WRTVDP.
+# Descifrados:
+#
+#   R0=02  M3=1, o sea SCREEN 2
+#   R1=E2  16K, pantalla encendida, interrupcion activa, sprites de 16x16
+#   R2=0E  NOMBRES  en 0x3800
+#   R3=7F  COLOR    en 0x2000 (en SCREEN 2 R3 no es una direccion: es base
+#          0x0000 y mascara 0x3F80, ver la nota de abajo)
+#   R4=07  PATRONES en 0x0000, los tres tercios
+#   R5=76  atributos de sprites en 0x3B00
+#   R6=03  patrones de sprites en 0x1800
+#   R7=E1  blanco sobre negro
+D 0x4722 0x472a registros_del_vdp  los ocho bytes de R0..R7 que L_4708 copia a 0xE038 y vuelca con WRTVDP
+F 0x4722 8
+
+# ======================================================================
+# LOS GUIONES DE ROTULOS
+# ======================================================================
+# El interprete son tres puertas a la misma rutina: 0x4066 lo pinta (mascara
+# 0xFF) y 0x4062 lo BORRA (mascara 0x00, escribe ceros) reutilizando el mismo
+# guion. El formato es [destino en VRAM, word] [indices de patron...] con
+# 0xFE para saltar a otro destino y 0xFF para terminar.
+#
+# Donde acaba cada uno no se estima: lo mide tools/guiones.py ejecutando ese
+# interprete. Los textos salen legibles restando 0x20, que es lo que confirma
+# que la fuente esta ordenada como el ASCII a partir del espacio.
+D 0x4255 0x4260 guion_continue  11 bytes; pinta "CONTINUE" en 0x396C. Lo usa 0x41FE
+D 0x499f 0x49bd guion_marcador  30 bytes, 4 tramos: "HI", "STAGE", "BONUS" y "1P". Lo pinta 0x4450
+D 0x49bd 0x49c3 guion_2p  6 bytes: "2P" en 0x3822. Lo pinta 0x445D
+D 0x49c3 0x4a3b guion_play_select  120 bytes, 6 tramos: "PLAY SELECT", las cuatro filas del menu y el "(c) 1984". Lo pinta 0x451D
+D 0x4a48 0x4a53 guion_player_1  11 bytes: "PLAYER 1" en 0x392C. Lo pinta 0x41AC
+D 0x4a53 0x4a69 guion_video_cartridge  22 bytes: "(r) VIDEO CARTRIDGE (r)" en 0x3966. Lo pintan 0x40FD y 0x410A
+
+# ======================================================================
+# LOS BLOQUES COMPRIMIDOS
+# ======================================================================
+# El descompresor son dos puertas: 0x45C9 (el bloque trae delante su destino
+# de VRAM) y 0x45CD (el destino llega ya en DE). El formato, sacado de leer
+# 0x45D1 y sus dos ramas:
+#
+#   0nnnnnnn b      REPITE el byte b n veces      (0x4573, `out` en bucle)
+#   1nnnnnnn b*n    COPIA n bytes tal cual        (0x457B, `djnz` leyendo)
+#   0x80            fin del tramo, detras viene otro destino de VRAM
+#   0x00            fin del bloque
+#
+# Donde acaba cada bloque lo mide tools/rle.py ejecutando eso mismo. Encajan
+# uno detras de otro sin dejar un byte suelto, que es la comprobacion de que
+# el formato esta bien leido: 0x61BA->0x6547->0x67A1->0x68BD->0x6968.
+#
+# Las direcciones de destino llevan puesto el bit 14 (0x5800, 0x6000...)
+# porque la BIOS SETWRT se queda con los catorce de abajo: 0x5800 es 0x1800.
+D 0x4378 0x4381 bloque_4378  9 bytes -> 16 en VRAM. Lo carga 0x4368
+D 0x47de 0x4956 bloque_color_pantalla  376 bytes -> 512 en la tabla de color (0x2000). Lo carga 0x45C0, y 0x4347 entra por 0x47F1 para cargar solo los 384 ultimos
+D 0x4a69 0x4b49 bloque_color_4A69  224 bytes -> 272 en color (0x2600). Lo carga 0x435B
+D 0x4ba6 0x4c39 bloque_4BA6  147 bytes -> 208 en VRAM. Lo carga 0x4B54
+D 0x5f58 0x5f61 bloque_5F58  9 bytes -> 96 en la tabla de nombres (0x3A80). Lo cargan 0x5F21 y 0x5F4D
+D 0x5fcf 0x5fd6 bloque_5FCF  7 bytes -> 32 en VRAM (0x1FE0). Lo carga 0x5FDC
+D 0x61ba 0x6547 bloque_sprites_61BA  909 bytes -> 1376 en patrones de sprites (0x1800). Lo carga 0x5FD6, y 0x6025 entra por 0x6323 para cargar solo los 704 ultimos
+D 0x6547 0x67a1 bloque_6547  602 bytes -> 704 en VRAM (0x1A20). Lo carga 0x6019, y 0x6040 entra por 0x667D para los 320 ultimos
+D 0x67a1 0x68bd bloque_67A1  284 bytes -> 384 en VRAM (0x1A20). Lo carga 0x6037
+D 0x68bd 0x6968 bloque_68BD  171 bytes -> 224 en VRAM (0x1C80). Lo carga 0x602E
+D 0x6ac6 0x6acb bloque_6AC6  5 bytes -> 32 en la tabla de nombres (0x3860). Lo carga 0x69CF
+D 0x7056 0x7149 bloque_7056  243 bytes -> 256 en VRAM. Lo carga 0x6005 con DE=0x2D00
+D 0x728f 0x72d2 bloque_728F  67 bytes -> 96 en VRAM, 2 tramos (0x3580 y 0x1580). Lo carga 0x71E5
+D 0x7596 0x7658 bloque_7596  194 bytes -> 344 en VRAM (0x23A8). Lo carga 0x753B
