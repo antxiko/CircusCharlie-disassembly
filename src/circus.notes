@@ -1024,3 +1024,282 @@ C 0x47d1 el bit 1: abajo
 C 0x47d4 una mas
 C 0x47d6 cuatro opciones, y da la vuelta sola
 B 0x47da LOS CUATRO MODOS DE JUEGO, que es lo que el menu deja en (0xE002): 0x40, 0x60, 0x50 y 0x70. El bit 6 va puesto siempre -es lo que le dice a 0x40AB que ya no estamos en el menu-, el bit 5 significa DOS JUGADORES y el bit 4, TECLADO en vez de mando. De ahi salen las cuatro lineas del rotulo: 1PLAYER/2PLAYERS por JOYSTICK/KEYBOARD.
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x4b49 prepara_la_cortinilla
+B 0x4b49 LA CORTINILLA DE ENTRADA. Deja el contador en 17 pasos y la posicion a cero, carga los patrones de la cortina y llena 208 celdas con 0xF0. Luego 0x4B6B la va bajando un paso por cuadro.
+C 0x4b49 diecisiete pasos
+C 0x4b4e y se empieza por arriba del todo
+C 0x4b54 los patrones de la cortina
+C 0x4b60 208 celdas
+C 0x4b63 con el patron 0xF0
+L 0x4b6b baja_la_cortinilla
+B 0x4b6b UN PASO DE CORTINILLA. Avanza 32 celdas -o sea una fila entera- y pinta la franja en DOS sitios a la vez: en la posicion que toca y en su reflejo respecto de 0x3AAA, restando con `sbc hl,de`. Por eso la cortina se cierra desde arriba y desde abajo al mismo tiempo.
+C 0x4b6b por donde va
+C 0x4b6e una fila, 32 celdas
+C 0x4b72 y se guarda
+C 0x4b77 el punto de reflejo
+C 0x4b7a restando sale la franja de abajo
+C 0x4b7d el primer patron de la franja
+C 0x4b7f tres celdas
+C 0x4b84 once celdas empezando por la 12
+C 0x4b8f y el resto, a cero
+C 0x4b92 un paso menos
+L 0x4b97 pinta_franja_correlativa
+B 0x4b97 PINTAR B CELDAS CON PATRONES CORRELATIVOS -A, A+1, A+2...- y dejar DE en la fila de abajo. Es lo que dibuja los bordes sin una tabla de por medio.
+C 0x4b98 el patron
+C 0x4b9c el siguiente, uno mas
+C 0x4ba0 y al salir, la fila de abajo
+L 0x4c39 monta_la_fase
+C 0x4c39 el decorado
+C 0x4c3c y los que se mueven
+L 0x4c4d mascara_38
+C 0x4c4d 0x38: deja pasar tres bits de direccion
+L 0x4c51 limita_los_mandos
+B 0x4c51 QUITARLE TECLAS AL JUGADOR SEGUN LA FASE. Recorta con un `and` lo que se leyo del mando -a 0x34 o a 0x38- de modo que en unas fases no se puede saltar o no se puede ir hacia atras. Y lo recorta en los dos sitios: en la lectura de este cuadro y en (0xE138).
+C 0x4c51 el numero de fase
+C 0x4c54 de la 8 en adelante, la mascara ancha
+C 0x4c58 y si no, tambien depende de por donde vaya
+C 0x4c5f 0x34: una direccion menos que la otra mascara
+C 0x4c62 la lectura de este cuadro
+C 0x4c65 recortada
+C 0x4c68 y la copia de (0xE138), igual
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x4c81 despacha_por_tipo_de_fase
+B 0x4c81 EL REPARTO POR TIPO DE FASE. (0xE052) dice de cual de las cinco se trata, y la tabla va pegada detras del `call` de 0x4C90, como siempre en este cartucho. Las tres primeras variantes comparten el remate (0x4CA3) y las dos ultimas comparten otro (0x4CA9): es la manera de no repetir el cierre del cuadro cinco veces.
+C 0x4c81 el tipo de fase
+C 0x4c85 los dos bits de abajo
+C 0x4c90 y la tabla de cinco, pegada detras
+B 0x4c9d FASE TIPO 1. Cierra el cuadro volcando los 128 bytes de atributos de sprites que se han ido preparando en 0xE0B0.
+C 0x4ca9 el bufer de sprites en RAM
+C 0x4cac la tabla de atributos de la VRAM
+C 0x4caf 128 bytes, los 32 sprites
+C 0x4cb2 y de una tirada
+L 0x4ce4 despacha_el_estado_del_jugador
+B 0x4ce4 EL REPARTO POR ESTADO DEL JUGADOR. (0xE134) dice que esta haciendo -corriendo, saltando, cayendo, muerto...- y la tabla de diez va pegada detras. DOS de sus entradas son 0x0000: son huecos del reparto, estados que no existen.
+C 0x4ce4 el estado del jugador
+C 0x4ce7 y la tabla de diez, con dos huecos dentro
+C 0x4cfe mira si hay que cambiar de estado
+C 0x4d03 y se marca en (0xE139)
+C 0x4d0c el patron 0x7E se cambia por el 0x7F: dos dibujos alternos
+C 0x4d11 el contador de la animacion
+C 0x4d16 a los ocho pasos
+C 0x4d1a mira si se esta pulsando un boton
+C 0x4d21 y entonces se engancha otra rutina en (0xE200)
+L 0x4d2a mira_si_llega_al_premio
+B 0x4d2a LA CAJA DE CONTACTO CON EL PREMIO. Compara la posicion del jugador con la del objeto en las dos coordenadas -menos de 0x10 en una y menos de 0x11 en la otra- y, si cae dentro, cambia el dibujo por el 0xC3, suma 300 puntos y hace sonar el aviso.
+C 0x4d2f la posicion del jugador
+C 0x4d32 centrada
+C 0x4d34 contra la del objeto
+C 0x4d36 dieciseis pixeles de margen
+C 0x4d3a la otra coordenada
+C 0x4d3d diecisiete de margen
+C 0x4d42 el dibujo cambia
+C 0x4d45 trescientos puntos
+C 0x4d4b y el sonido del premio
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x4d52 siete bytes por objeto
+C 0x4d57 y los tres objetos de la lista
+C 0x4d59 el temporizador de 0xE156
+C 0x4d5f el sonido 3 si salta
+C 0x4d64 si (0xE202) esta a cero no hay nada en marcha
+C 0x4d6b el tipo de fase
+C 0x4d6f la fase 0 tiene su propia comprobacion
+L 0x4d75 fase_2_el_tope_de_altura
+B 0x4d75 FASE TIPO 2: el tope de altura. Si la altura del jugador pasa de 0x3F se clava ahi y, segun el tramo en el que este (0xE218), se elige uno de tres valores -0, 0x10 o 0x20-, que es lo que decide a que altura se le deja llegar.
+C 0x4d7c la altura del jugador
+C 0x4d7f el tope
+C 0x4d82 por debajo del tope no se hace nada
+C 0x4d85 y por encima, se clava
+C 0x4d88 el tramo
+C 0x4d8b por dos, con el acarreo al bit 0
+C 0x4d94 tramo medio
+C 0x4d9a y tramo alto
+L 0x4d9e fase_3_los_siete_objetos
+B 0x4d9e FASE TIPO 3: la comprobacion contra SIETE objetos, uno por uno. La caja es 0x20 en una coordenada y 5 en la otra -mucho mas estrecha en esa-, y el primero que casa corta el bucle. Si ninguno casa, se sigue por 0x4E13.
+C 0x4da2 siete objetos
+C 0x4da4 sus posiciones
+C 0x4da7 la referencia fija
+C 0x4dab treinta y dos pixeles de margen en esta
+C 0x4daf la posicion del jugador
+C 0x4db5 y solo cinco en la otra: la caja es estrecha
+C 0x4dba el objeto siguiente
+L 0x4dbe toca_un_objeto
+B 0x4dbe UN OBJETO TOCADO. Del contador del bucle sale el indice al reves (`ld a,007h / sub b`), y con el se apaga el objeto en su lista y se marca en la otra. Luego cambia los tres dibujos del jugador al 0x7E y llena veinticuatro celdas con el patron 0xC3.
+C 0x4dbe siete menos lo que queda: el indice del objeto
+C 0x4dc1 por dos: son palabras
+C 0x4dc9 se apaga en su lista
+C 0x4dd2 y se marca como tocado
+C 0x4dd4 el dibujo del jugador cambia
+C 0x4ddf veinticuatro celdas
+C 0x4de4 con el patron 0xC3
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x4df6 el sonido del objeto tocado
+L 0x4dfe fase_4_el_suelo
+B 0x4dfe FASE TIPO 4: el suelo. De la fase 8 en adelante, o si se ha pasado de 0x40 en (0xE14C), se aterriza sin mas; si no, el jugador se queda arriba.
+C 0x4e02 el numero de fase
+C 0x4e05 de la octava en adelante, directo
+C 0x4e0c la posicion dentro de la fase
+L 0x4e13 aterriza
+B 0x4e13 ATERRIZAR. Clava la posicion en 0x98 -que es el suelo- y pone el estado 5. Si ya estaba por debajo, no se toca: `cp (hl) / jr nc` es lo que evita que el jugador suba de golpe al tocar suelo.
+C 0x4e16 el suelo
+C 0x4e19 si ya esta mas abajo, se deja
+C 0x4e1e estado 5
+L 0x4e26 fase_0_el_salto_al_aro
+B 0x4e26 FASE TIPO 0: el salto que cuenta. La ventana es estrecha a proposito -cinco pixeles en una coordenada y 0x24 en la otra- y, si se acierta, se coloca al jugador en 0x85, se pasa al estado 4 y suena el 1. Si no, se aterriza como en cualquier otro sitio.
+C 0x4e29 la posicion del jugador
+C 0x4e2c contra 0x83
+C 0x4e2e cinco pixeles de ventana
+C 0x4e32 y la otra coordenada
+C 0x4e38 0x24 de margen
+C 0x4e3c se coloca ahi
+C 0x4e41 estado 4
+C 0x4e46 y el sonido del acierto
+C 0x4e4b la lectura del mando se congela en (0xE138)
+L 0x4e57 se_queda_donde_estaba
+C 0x4e5a el tope
+C 0x4e5d si ya esta por debajo, se deja
+C 0x4e62 el tramo, que es lo que vale el premio
+C 0x4e65 por dos
+C 0x4e67 y se suman los puntos
+C 0x4e6a estado 0: a correr otra vez
+L 0x4e74 cierra_el_cuadro_del_jugador
+C 0x4e77 si no hay nada especial, el cuadro normal
+C 0x4e7a estado 2
+C 0x4e82 se apaga el bit 7 y se enciende el 6 de (0xE1E0)
+C 0x4e8a y se le da la vuelta al bit 4 de (0xE1C0): el dibujo alterna
+C 0x4e8d quinientos puntos
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x4ea0 la otra coordenada, contra 0x3C
+C 0x4ea4 y 0x30 de margen: la caja es ancha aqui
+L 0x4ea7 estado_0_corriendo
+B 0x4ea7 ESTADO 0: corriendo. Si hay direccion pulsada -bits 2 y 3- avanza 0xC0 por cuadro en punto fijo de 16 bits, y de los bits 2 y 3 del byte alto sale el paso de la animacion: cuatro dibujos que se alternan solos con el avance, sin contador aparte.
+C 0x4ea7 lo que se esta pulsando
+C 0x4eaa los dos bits de direccion
+C 0x4eac la posicion en punto fijo
+C 0x4eb1 en la fase 4 se avanza siempre
+C 0x4ebc 0xC0 por cuadro
+C 0x4ec3 los bits 2 y 3 del byte alto
+C 0x4ec6 bajados a su sitio: el paso de la animacion
+C 0x4ecb el tipo de fase
+C 0x4ed2 en la fase 3 hay que mirar si se cae
+C 0x4eda se marca la caida
+C 0x4ee0 estado 6
+C 0x4ee5 mira si se ha pulsado salto
+C 0x4ee8 si no, cuadro normal
+C 0x4eee la rampa de la caida
+C 0x4ef4 estado 1: saltando
+C 0x4ef9 la lectura del mando se congela para todo el salto
+C 0x4f02 el tipo de fase decide el sonido del salto
+C 0x4f07 uno
+C 0x4f0b y el otro
+L 0x4f10 estado_1_saltando
+B 0x4f10 ESTADO 1: en el aire. El dibujo alterna dandole la vuelta al bit 4 de (0xE1C0), y los cinco bits de abajo son el paso del salto: hasta 5, de 5 a 0x11 y de 0x11 en adelante se usan tres rampas distintas, con desplazamientos de 0xFC, 0x04, 0xF0... o sea, la parabola esta partida en tramos.
+C 0x4f10 se ha soltado el boton?
+C 0x4f18 se marca que esta en el aire
+C 0x4f1f el dibujo alterna en cada cuadro
+C 0x4f23 el paso del salto
+C 0x4f25 tercer tramo
+C 0x4f29 primer tramo
+C 0x4f2d el bit 4 decide el sentido
+C 0x4f2f cuatro pixeles hacia un lado
+C 0x4f33 o cuatro hacia el otro
+C 0x4f37 y su rampa de alturas
+C 0x4f42 dieciseis pixeles
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x4f4d ocho pixeles
+C 0x4f54 y cuatro en el ultimo tramo
+C 0x4f59 el desplazamiento se guarda para el cuadro
+C 0x4f60 estado 3
+L 0x4f67 estado_2_la_voltereta
+B 0x4f67 ESTADO 2: la voltereta. La altura sale de una de las dos CURVAS de diez valores -0x521D o 0x5227, segun el bit 1 de (0xE1E0)- indexada con los cuatro bits de abajo del paso. Y el dibujo se elige por tramos con la simetria de siempre: si el paso pasa de 15 se refleja (`cpl / sub 5 / and 01fh`), de modo que la vuelta entera se dibuja con la mitad de las poses.
+C 0x4f67 hay voltereta en marcha?
+C 0x4f6c una curva
+C 0x4f72 el bit 1 elige
+C 0x4f76 o la otra
+C 0x4f79 el paso de la voltereta
+C 0x4f7d los cuatro bits de abajo: diez alturas
+C 0x4f82 y esa es la altura del cuadro
+C 0x4f87 los cinco bits de abajo
+C 0x4f89 de la mitad en adelante
+C 0x4f8d se refleja: las 32 posiciones con la mitad de dibujos
+C 0x4f92 y de ahi salen tres poses
+L 0x4fa5 mira_los_choques
+B 0x4fa5 LA COMPROBACION DE CHOQUE CONTRA EL DECORADO, con la caja de 0x38 por 0x38 alrededor de (0xE14C). El desplazamiento de 0x10 que se suma antes NO se aplica en la fase 2 -ahi vale cero-, que es lo que cambia el alcance en esa fase.
+C 0x4fa5 el estado del jugador
+C 0x4fa8 en el estado 6 no se comprueba
+C 0x4fb2 la referencia del decorado
+C 0x4fb5 y la posicion del jugador, las dos coordenadas de un tiron
+C 0x4fb9 dieciseis de desplazamiento
+C 0x4fbb salvo en la fase 2
+C 0x4fc4 cincuenta y seis pixeles de caja
+C 0x4fc9 la otra coordenada
+C 0x4fcd si esta muy cerca, choque
+C 0x4fd5 y si no, las demas comprobaciones
+L 0x4fea jugador_alcanzado
+C 0x4fed la lista de siete valores
+C 0x4ff6 estado 9: alcanzado
+C 0x4ffb y el sonido de la desgracia
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x5000 estado_por_la_tabla_5000
+B 0x5000 DOS TROZOS QUE SOLO ALCANZA LA TABLA DE 0x4CEA. Ninguna instruccion del cartucho carga estas direcciones: se llega a ellas por el reparto de estados, y son las entradas 9 y 6 de esa tabla. Fue lo ultimo que quedaba sin explicar del cartucho.
+C 0x5000 espera a que se acabe lo que este sonando
+C 0x5005 estado 8
+C 0x500a y el sonido del final
+C 0x500f espera a que pare todo
+C 0x5014 y se baja la bandera de partida en marcha
+L 0x5018 se_ha_caido
+B 0x5018 LA CAIDA. El estado y el sonido cambian segun el tipo de fase: la 1 va al estado 9 y la 4 hace sonar el 7.
+C 0x5018 el tipo de fase
+C 0x5021 estado 6
+C 0x5028 el sonido de la caida
+L 0x502d baja_dos_y_aterriza
+C 0x5030 dos pixeles hacia abajo
+L 0x5035 llega_a_la_meta
+B 0x5035 LLEGAR AL FINAL DE LA FASE: coloca al jugador en su sitio, suma DOS MIL puntos, levanta la senal de fin (0xE00D) y hace sonar el 0x11, que es el unico sonido que 0x7BA5 trata aparte -encadena tres seguidos.
+C 0x5035 el tipo de fase decide la pose y el ajuste
+C 0x5047 dieciseis menos en la fase 1
+C 0x5049 y treinta menos siempre
+C 0x5051 la otra coordenada, veinte mas
+C 0x505d dos mil puntos
+C 0x5063 la senal de fin de fase
+C 0x5068 y el sonido 0x11, el de la fanfarria
+L 0x506d estado_5_en_el_suelo
+C 0x5070 si no hay nada en marcha, cuadro normal
+C 0x507f por encima de 0x79 se sigue cayendo
+L 0x5087 dibuja_al_jugador
+B 0x5087 DIBUJAR AL JUGADOR. Coge sus tres bytes de estado -posicion, posicion y pose-, corrige medio pixel con el bit 0 y elige la tabla de sprites segun el tipo de fase: la fase 1 usa una tabla con ocho bytes por pose y las demas una de cuatro.
+C 0x5087 los tres bytes del jugador
+C 0x5090 el bit 0 de la pose
+C 0x5094 corrige un pixel
+C 0x5095 el tipo de fase
+C 0x509d por cuatro
+C 0x509f la tabla de las fases normales
+C 0x50a6 y por ocho para la fase 1, que gasta el doble

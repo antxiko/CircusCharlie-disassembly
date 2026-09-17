@@ -31,3 +31,6 @@ __pycache__/
 *.pyc
 .forja/
 *.omr
+
+# el borrador del mensaje de commit, que no es parte del proyecto
+MENSAJE.txt
