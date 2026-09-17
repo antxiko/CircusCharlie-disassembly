@@ -2124,3 +2124,516 @@ C 0x5c6e uno mas
 C 0x5c6f el tope son cuatro
 C 0x5c7a por dos, en el byte alto: 512 por cada uno
 C 0x5c7f y el sonido del acierto
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x5ce3 avanza_la_animacion_grande
+B 0x5ce3 EL RITMO DE LA FIGURA GRANDE. El nibble bajo de (0xE1E0) mas uno indexa la tabla de 0x5F61 -14, 12, 10, 8, 6 y 4-, y ese es el numero de cuadros que dura cada paso: cuanto mas alto el nibble, MENOS cuadros, o sea mas deprisa. Y en el estado 2 el jugador puede empujar ese ritmo un paso arriba o abajo con la direccion que pulse.
+C 0x5ce6 se baja la senal de paso cumplido
+C 0x5ce8 el nivel de ritmo
+C 0x5ceb el nibble bajo
+C 0x5cef el estado del jugador
+C 0x5cf2 solo en el estado 2 se puede empujar
+C 0x5cf6 la direccion pulsada
+C 0x5cfb dos bits
+C 0x5d04 cruzado con el sentido: si coinciden, acelera
+C 0x5d07 un paso mas rapido
+C 0x5d0a o uno mas lento
+C 0x5d0c la tabla de duraciones
+C 0x5d12 los cuadros que dura este paso
+C 0x5d16 el contador
+C 0x5d18 llego?
+C 0x5d1d se levanta la senal de paso cumplido
+C 0x5d25 el paso, en BCD
+C 0x5d29 el bit 4 dice en que media vuelta va
+L 0x5d33 coloca_la_figura_grande
+B 0x5d33 COLOCAR LA FIGURA GRANDE. Dos tablas a la vez: la de alturas (0x521D o 0x5227) y la de velocidades con signo (0x5F7B o 0x5F85), las dos indexadas con el nibble bajo del mismo paso. La eleccion la hace el bit 6 de (0xE1E0), y el bit 1 de (0xE1E2) cambia al par suave.
+C 0x5d37 las velocidades con signo
+C 0x5d3a y las alturas
+C 0x5d40 el bit 6 elige el par
+C 0x5d4e el bit 1, la variante suave
+C 0x5d52 las velocidades suaves
+C 0x5d55 y sus alturas
+C 0x5d5a el nibble bajo: diez pasos
+C 0x5d5d en la tabla de alturas
+C 0x5d61 y en la de velocidades
+C 0x5d69 la altura, guardada
+C 0x5d6b el bit 4: la otra media vuelta
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x5d6f el signo cambia en la otra media vuelta
+C 0x5d72 y la coordenada queda guardada
+L 0x5d76 mueve_la_figura_grande
+B 0x5d76 MOVER LA FIGURA GRANDE. Coge a la vez su curva de alturas (0x5F67 o 0x5F71) y su tabla de velocidades con signo (0x5F7B o 0x5F85), las indexa con el nibble bajo del paso y le da la vuelta al signo de las dos segun el bit 4: con una sola mitad de la tabla se recorre la vuelta entera.
+C 0x5d76 el estado del jugador
+C 0x5d79 el estado 4 tiene su propio camino
+C 0x5d7b la senal de paso cumplido
+C 0x5d81 sin paso cumplido no hay movimiento
+C 0x5d85 el estado 3, tambien aparte
+C 0x5d89 la curva de alturas
+C 0x5d8c y las velocidades
+C 0x5d92 el bit 1 elige el par suave
+C 0x5da0 el nibble bajo: diez pasos
+C 0x5dab el bit 4: la otra media vuelta
+C 0x5daf y el signo al reves
+C 0x5db9 mas 0x3D, que es el centro
+C 0x5dc3 se aplica a la posicion
+C 0x5dc5 y se repinta
+C 0x5dca el signo, para el desplazamiento del decorado
+C 0x5dd0 byte alto a 0xFF: negativo
+L 0x5dd7 estado_3_arrastrado
+C 0x5dd7 la lectura congelada del mando
+C 0x5ddf se le suma a una coordenada
+C 0x5de6 y a la otra
+L 0x5dea estado_4_con_el_decorado
+C 0x5deb cuenta el paso
+C 0x5dee pinta lo que entra por el borde
+C 0x5df1 y corre el decorado
+L 0x5df7 borra_la_franja_de_abajo
+C 0x5df7 la franja de abajo de la pantalla
+C 0x5dfa 256 celdas
+C 0x5e01 el numero de fase
+C 0x5e07 en el titulo, la referencia es la del decorado
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x5e10 pinta_las_dos_figuras
+B 0x5e10 PINTAR LAS DOS FIGURAS GRANDES. Cada una tiene su repertorio de poses -0x76EC y 0x7806 para la primera, 0x7876 y 0x797E para la segunda- y el bit 1 de (0xE1E0) elige entre los dos de cada par. La segunda solo se pinta si su posicion pasa de 8 y no adelanta a la referencia del decorado.
+C 0x5e10 el paso de la primera
+C 0x5e16 su repertorio
+C 0x5e19 el bit 1 elige el otro
+C 0x5e20 y su sitio en la pantalla
+C 0x5e23 el bit 7: hay segunda figura
+C 0x5e2a por debajo de ocho no se pinta
+C 0x5e37 el repertorio de la segunda
+C 0x5e44 la segunda esta activa?
+C 0x5e49 su paso propio
+C 0x5e50 sumado
+C 0x5e51 si desborda, se deja
+C 0x5e5c y no puede adelantar a la referencia
+L 0x5e74 pinta_una_pose
+B 0x5e74 PINTAR UNA POSE DEL REPERTORIO. Los cinco bits de abajo del paso dan la pose y, pasado el 15, se REFLEJA (`cpl / sub 5 / and 01fh`): las 32 posiciones se dibujan con once poses. Luego el guion se recorre con 0xFF de fin y 0xFE de fila nueva, y avanza o RETROCEDE segun si la pose es menor de seis: por eso la figura mira al otro lado sin datos aparte.
+C 0x5e76 los cinco bits del paso
+C 0x5e78 de la mitad en adelante
+C 0x5e7c se refleja
+C 0x5e83 la pose por dos: son punteros
+C 0x5e88 y de ahi el guion de la pose
+C 0x5e8e el byte del guion
+C 0x5e91 0xFF: fin de la pose
+C 0x5e94 0xFE: fila nueva
+C 0x5e97 treinta y dos celdas
+C 0x5e9f y al VDP
+C 0x5ea3 por debajo de seis se avanza, y por encima se retrocede
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x5ea7 hacia atras
+C 0x5eaa o hacia delante
+C 0x5eac final de fila
+C 0x5eb2 0xFF en el salto de fila: fin
+C 0x5eb5 0xFE: otra fila mas
+L 0x5ebc avanza_la_segunda_figura
+B 0x5ebc EL RITMO DE LA SEGUNDA FIGURA, con la misma tabla de duraciones que la primera (0x5F61) pero su propio contador y su propio paso en BCD. Asi las dos van a compases distintos con una sola tabla.
+C 0x5ebf su nivel de ritmo
+C 0x5ec2 la misma tabla de duraciones
+C 0x5ec8 los cuadros que dura el paso
+C 0x5ecc su contador
+C 0x5ed4 y su paso, en BCD
+L 0x5edb pasa_el_relevo_a_la_segunda
+B 0x5edb EL RELEVO ENTRE LAS DOS FIGURAS. Cuando el decorado pasa de 0x160 y la segunda esta a tiro -menos de 16 contando los ocho de holgura- la segunda PASA A SER la primera: se copian sus dos bytes de ritmo y su paso de un golpe con un `ld hl,(...)` y un `ld (...),hl`.
+C 0x5edb el estado del jugador
+C 0x5ee0 en el estado 2 no hay relevo
+C 0x5ee1 la posicion del decorado
+C 0x5ee4 el umbral
+C 0x5eee ocho de holgura
+C 0x5ef0 y dieciseis de ventana
+C 0x5ef3 su paso propio
+C 0x5ef8 el ritmo de la segunda
+C 0x5efb pasa a ser el de la primera, los dos bytes de un tiron
+C 0x5efe y tambien su paso
+L 0x5f0a apaga_la_segunda
+C 0x5f0b la segunda se apaga
+L 0x5f0f repinta_lo_que_sujeta
+C 0x5f0f el estado del jugador
+C 0x5f17 la senal de paso cumplido
+C 0x5f21 el bloque de las seis celdas
+C 0x5f2a la mitad del paso
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x5f30 menos 0x18
+C 0x5f32 por debajo, no hay nada que pintar
+C 0x5f37 dos bits: cuatro variantes
+C 0x5f39 la tabla de rectangulos de 3x7
+C 0x5f48 la fila 0xA0
+L 0x5f4d repinta_desde_arriba
+C 0x5f4d el mismo bloque de seis celdas
+L 0x5fd6 monta_el_decorado_de_la_fase
+B 0x5fd6 EL MONTAJE DEL DECORADO, que es lo primero de cada fase. Carga los patrones de sprites, los del marco, monta lo comun y luego DESPACHA por el tipo de fase con la tabla pegada de 0x5FEF, dejando apilado el remate de 0x699D.
+C 0x5fd6 los patrones de sprites
+C 0x5fdc y los del marco
+C 0x5fe2 lo comun a todas las fases
+C 0x5fe5 el remate, apilado a mano
+C 0x5fe9 el tipo de fase
+C 0x5fec y su tabla de cinco, pegada detras
+B 0x5ff9 MONTAJE DE LA FASE TIPO 0.
+B 0x5fff MONTAJE DE LA FASE TIPO 1: carga su bloque y rellena 256 celdas con el patron 0x60.
+C 0x6002 el destino en la tabla de color
+C 0x600e 256 celdas
+C 0x6011 con el patron 0x60
+B 0x6016 MONTAJE DE LA FASE TIPO 2.
+B 0x601f MONTAJE DE LA FASE TIPO 3: dos bloques y el relleno de en medio.
+C 0x6022 el destino
+C 0x602e y el segundo bloque
+B 0x6034 MONTAJE DE LA FASE TIPO 4.
+L 0x6046 pon_a_cero
+C 0x6047 un cero
+C 0x6049 B veces
+L 0x604c limpia_el_estado_de_la_fase
+B 0x604c LIMPIAR EL ESTADO DE LA FASE: 160 bytes a cero desde 0xE130, en dos pasadas de 80, salvando antes la referencia del decorado con el juego alternativo de registros para no perderla.
+C 0x604c la referencia, a salvo en el juego alternativo
+C 0x6053 ochenta bytes
+C 0x6055 y otros ochenta
+C 0x605c la referencia, de vuelta
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+B 0x6060 PONER EN PIE LOS SPRITES DE LA FASE. Borra los 128 bytes del bufer, copia los trece sprites de 0x6D63 a DOS sitios -0xE0E0 y 0xE120- y, en unas fases, le suma 0x58 al patron de cada uno saltando de cuatro en cuatro: el mismo juego de sprites, con otros dibujos.
+C 0x6061 el bufer de sprites
+C 0x6064 128 bytes
+C 0x6069 la primera copia
+C 0x606c los trece sprites
+C 0x606f dieciseis bytes
+C 0x6074 y la segunda copia
+C 0x607b que dibujo toca en esta fase
+C 0x6084 veinte sprites
+C 0x6087 los que estan fuera de pantalla no se tocan
+C 0x608b y a los demas, 0x58 al patron
+C 0x608e cuatro bytes por sprite
+C 0x6098 veinte bytes al bufer de verdad
+C 0x609c la lista de siete
+C 0x60a4 la casilla de 0xE210
+C 0x60aa una menos
+C 0x60ac la fila 0xA0
+C 0x60ae el tipo de fase
+C 0x60b3 y su tabla de cinco, pegada detras
+B 0x60c0 ARRANQUE DE LA FASE TIPO 0: cuatro moviles a la fila 0x48 y el jugador en (0x85, 0x3C). Si el bit 6 de (0xE002) esta puesto -o sea, ya no estamos en el menu- ademas suena el 0x89.
+C 0x60c0 la lista de siete
+C 0x60c9 cuatro moviles
+C 0x60cd a la fila 0x48
+C 0x60d2 el estado inicial de los moviles
+C 0x60db el jugador, en su sitio
+C 0x60e6 el bit 6
+C 0x60e9 y el sonido de arranque
+B 0x60f2 ARRANQUE DE LA FASE TIPO 1: coloca el suelto en (0xD0, 0x50) con su plazo de 13 y le pone la rampa de 0x59FA.
+C 0x60f5 el suelto
+C 0x60fe su plazo
+C 0x6100 y su rampa
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x6106 el plazo del suelto
+C 0x610e la referencia del decorado
+C 0x6113 y el jugador, en (0x3F, 0x3C)
+C 0x611f el sonido de esta fase
+L 0x6128 baja_los_tres_recogibles
+C 0x6128 los tres primeros recogibles
+C 0x612b uno menos cada uno
+C 0x6132 y su estado inicial
+B 0x6139 ARRANQUE DE LA FASE TIPO 2: el jugador entra en 0x7E, no en 0x3F, y con el mismo dibujo puesto en (0xE18C).
+B 0x6142 ARRANQUE DE LA FASE TIPO 3: engancha el guion de la cola (0x5C8E) en sus DOS punteros -el que avanza y el que guarda el principio- y deja la primera pieza a un cuadro vista.
+C 0x6142 la lista de siete
+C 0x6148 el guion de la cola
+C 0x614b el puntero que avanza
+C 0x614e y el que recuerda el principio
+C 0x6154 la primera pieza, ya
+B 0x6161 ARRANQUE DE LA FASE TIPO 4, la de las dos figuras grandes: el jugador en (0x2E, 0x3C) con el estado 2, la referencia en 0x48 y los cuatro bytes de ritmo de las figuras -0x41, 0x90, 0x83 y 0xA0- puestos a mano.
+C 0x6161 el jugador
+C 0x616e estado 2
+C 0x6172 la referencia del decorado
+C 0x6177 el paso de la primera figura
+C 0x617c y la posicion de la segunda
+C 0x617f los cuatro bytes de ritmo
+C 0x618d el sonido de esta fase
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x6968 monta_la_escena_de_la_fase
+B 0x6968 EL MONTAJE DE UNA ESCENA. Encadena TRES maquinas sobre el mismo HL sin volver a cargarlo: la escena de 0x6BE3 con 0x6A42, luego el bloque comprimido de 0x6D1A y luego mas listas de patrones. Cada una deja el puntero donde lo coge la siguiente.
+C 0x6968 la escena
+C 0x696e el bloque que va detras
+C 0x6971 su destino en la VRAM
+C 0x6978 primero las listas de patrones repetidos
+C 0x697b y despues el descompresor, con el mismo HL
+C 0x6984 648 bytes
+C 0x6991 y el resto, 1016
+L 0x699d remata_el_montaje
+C 0x699d que dibujo toca en esta fase
+L 0x69d5 lee_dos_bytes_del_guion
+B 0x69d5 DOS BYTES DEL GUION que van a parar a B y C, y con ellos se revuelve el bufer: B por ocho es el desplazamiento dentro de el.
+C 0x69d5 el primero
+C 0x69d7 y el segundo
+C 0x69da revuelve el bufer con ellos
+L 0x69df pinta_el_bufer_por_filas
+B 0x69df PINTAR EL BUFER EN LA VRAM, fila a fila. El primer byte es la pagina y cada fila trae su numero; un cero cierra. La direccion sale de multiplicar por ocho (`add hl,hl` tres veces) y ponerle el bit 6, que es la marca de escritura del VDP.
+C 0x69df la pagina del destino
+C 0x69e1 el numero de fila
+C 0x69e4 un cero cierra la lista
+C 0x69e8 por ocho
+C 0x69ec la marca de escritura
+C 0x69f2 el bufer de 0xE280
+L 0x69fb pinta_el_bufer_con_ajuste
+B 0x69fb LA OTRA PUERTA: la pagina es fija (5) y cada fila trae ADEMAS un byte de ajuste que se le suma al destino. Es lo que permite pintar filas que no empiezan en la misma columna.
+C 0x69ff el numero de fila
+C 0x6a00 la pagina, fija
+C 0x6a07 la marca de escritura
+C 0x6a10 el ajuste de esta fila
+C 0x6a12 sumado al destino
+L 0x6a1a vuelca_por_mascaras
+B 0x6a1a EL VOLCADO POR MASCARAS, que es lo mas bonito de este montaje: cada byte del guion es una MASCARA DE OCHO BITS y cada bit dice si el patron que toca del bufer se escribe o se salta. Con un byte se deciden ocho patrones, y por eso se puede repintar media pantalla sin tocar la otra media.
+C 0x6a1a la mascara
+C 0x6a1c ocho bits
+C 0x6a1e HL pasa a ser el bufer y DE el guion
+C 0x6a1f el bit de arriba al acarreo
+C 0x6a22 ocho bytes, que es un patron
+C 0x6a25 bit a uno: se escribe
+C 0x6a28 y en los dos casos se avanza el bufer
+C 0x6a2d otro byte de mascara, si no es cero
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x6a33 monta_escena_con_ajuste
+B 0x6a33 EL BUCLE DE MONTAJE, en sus dos variantes: descomprimir un trozo al bufer, leer sus dos bytes y volcarlo. Se repite mientras el byte siguiente no sea cero. La diferencia entre las dos puertas es solo con que rutina se pinta -0x69FB lee un ajuste por fila y 0x69DF no-, y por eso una escena medida con la puerta equivocada se pasa de largo.
+C 0x6a3e otro trozo mas
+C 0x6a40 y el cero que cierra
+L 0x6a42 monta_escena
+C 0x6a4d otro trozo mas
+L 0x6a51 descomprime_a_ram
+B 0x6a51 EL SEGUNDO DESCOMPRESOR, con el mismo lenguaje que el de la VRAM pero descargando en el bufer de 0xE280: bit 7 a cero repite un byte, bit 7 puesto copia n tal cual, y un 0x00 cierra.
+C 0x6a51 el bufer
+C 0x6a54 el byte de control
+C 0x6a57 cero: se acabo
+C 0x6a58 bit 7 puesto: copia literal
+C 0x6a5b la cuenta
+C 0x6a5c y el byte que se repite
+C 0x6a64 la cuenta, siete bits
+C 0x6a69 y copia de un tiron
+L 0x6a6d pinta_bloque_en_su_sitio
+C 0x6a6e de posicion a celda
+C 0x6a71 que dibujo toca
+C 0x6a75 una tabla
+C 0x6a7a o la otra
+C 0x6a7d tres giros: el indice
+C 0x6a86 lo que queda hasta el borde derecho
+L 0x7ba2 pide_un_sonido
+B 0x7ba2 PEDIR UN SONIDO. El 0x11 es el unico que se trata aparte: encadena TRES seguidos -el propio, el 0x52 y el 0x53-, que es la fanfarria de fin de fase.
+C 0x7ba5 el sonido especial
+C 0x7ba9 el primero
+C 0x7bae el segundo
+C 0x7bb1 y el tercero
+L 0x7bb8 reparte_el_sonido
+B 0x7bb8 REPARTIR UN SONIDO ENTRE LAS VOCES. El numero decide a que grupo va: por debajo de 0x89 son efectos -y dentro de ellos, el 6 y los que pasan de 0x12 tienen su propio hueco-, y de 0x91 en adelante van a una voz mas. Cada grupo lleva su PRIORIDAD: si lo que suena tiene el numero mas alto, el nuevo no entra.
+C 0x7bb8 el numero de sonido
+C 0x7bb9 dos voces
+C 0x7bbb la voz de los efectos
+C 0x7bbe por debajo de 0x89: efecto
+C 0x7bc2 de 0x89 a 0x90
+C 0x7bc6 y de 0x91 en adelante, una voz mas
+C 0x7bc9 seis bits
+C 0x7bcc el sonido 6 tiene su hueco
+C 0x7bd0 y los que pasan de 0x12, otro
+L 0x7bde compara_prioridades
+C 0x7bde D dice si se fuerza
+C 0x7be4 la prioridad de lo que esta sonando
+C 0x7bea contra la del que llega
+C 0x7bec si el nuevo pierde, no entra
+C 0x7bf0 el numero por dos
+C 0x7bf1 y la tabla de veintitres punteros
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x7bf9 arranca_la_voz
+B 0x7bf9 ARRANCAR UNA VOZ: le pone la cuenta a uno para que suene en el cuadro siguiente, guarda el numero de sonido y copia los dos bytes del puntero a la partitura. Los cinco bytes que se salta con `ld a,005h / add a,l` son el resto del estado, que se deja como estaba.
+C 0x7bf9 la cuenta, a uno: suena ya
+C 0x7bff el numero de sonido
+C 0x7c01 y su partitura, dos bytes
+C 0x7c07 cinco bytes mas alla del estado
+C 0x7c0b las vueltas, a cero
+L 0x753b monta_el_decorado_de_la_fase_4
+B 0x753b EL MONTAJE DE LA FASE TIPO 4. Descomprime el bloque de 0x7596 y sigue con `call L_45D1` SIN tocar HL, o sea que lo que hay en 0x7658 es la segunda mitad del mismo bloque. Luego vuelca la tira de 0x7598 a dos sitios y rellena el resto.
+C 0x753e el primer bloque
+C 0x7541 y el segundo, pegado detras
+C 0x7544 la tira de indices
+C 0x7547 a un sitio
+C 0x754d y al otro
+C 0x7555 1152 celdas de relleno
+L 0x7567 vuelca_con_espera
+B 0x7567 VOLCAR UNA TIRA A LA VRAM CON ESPERAS. Es el mismo lenguaje del descompresor pero escribiendo directo al puerto, y los `push hl / pop hl` de 0x7578 no hacen nada: estan para dar tiempo al VDP entre byte y byte.
+C 0x756b el byte de control
+C 0x756d un cero cierra
+C 0x7576 y al puerto
+L 0x545c coloca_un_movil_del_decorado
+C 0x545c la casilla del decorado
+C 0x545d vacia
+C 0x5461 lo que hay en ella
+C 0x5462 0xEF hacia atras
+C 0x5469 y de ahi salen tres bits de variante
+L 0x557c saca_una_fila_al_vdp
+C 0x557c al puerto de datos
+C 0x5580 el ancho, para saltar a la fila siguiente del dibujo
+C 0x5587 y treinta y dos celdas en la VRAM
+L 0x558d suma_los_tres_moviles
+B 0x558d LA CUENTA RAPIDA DE MOVILES: suma los tres bytes de estado y mira el nibble bajo. Si no da 0x0F, el hueco de sprite se libera. Es el mismo apano que con los recogibles, un contador que no puede descuadrarse porque se recalcula.
+C 0x5593 sumando de dos en dos bytes
+C 0x5597 el nibble bajo
+C 0x5599 el valor que dice que estan los tres
+C 0x559d y si no, se libera el sprite
+L 0x55a1 pinta_el_movil_grande
+C 0x55a5 su destino en la VRAM
+C 0x55a8 seis por diez
+L 0x6a95 saca_una_fila_del_bufer
+C 0x6a95 un byte del bufer
+C 0x6a97 al puerto de datos
+C 0x6a9d y la fila de abajo, 32 celdas
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x7477 monta_el_decorado_de_la_fase_3
+B 0x7477 EL MONTAJE DE LA FASE TIPO 3. Tras la escena, COPIA UN TROZO DE VRAM SOBRE OTRO (0x2BB0 a 0x2AC0, 720 bytes) en vez de volver a descomprimirlo: el decorado se repite y se duplica ahi mismo.
+C 0x747d el destino de las listas de patrones
+C 0x7486 el trozo que ya esta puesto
+C 0x7489 720 bytes de VRAM a VRAM
+L 0x6d97 monta_el_decorado_de_la_fase_1
+B 0x6d97 EL MONTAJE DE LA FASE TIPO 1: la escena por la puerta con ajuste, y luego DOS tandas de patrones volcadas CUATRO veces cada una con el mismo puntero, que es lo que repite el motivo por toda la franja.
+C 0x6d9d el destino
+C 0x6da3 la primera tanda, cuatro veces
+C 0x6da9 y la segunda, otras cuatro
+L 0x7b73 nota_al_psg
+B 0x7b73 DE NOTA A PERIODO. El indice saca uno de los doce periodos de la escala y (ix+5) dice cuantas octavas hay que bajar: cada `add hl,hl` dobla el periodo, que es bajar una octava justa.
+C 0x7b77 la escala de doce
+C 0x7b7d el periodo de esa nota
+C 0x7b80 las octavas a bajar
+C 0x7b87 doblar el periodo es bajar una octava
+L 0x61b0 copia_uno_de_cada_cuatro
+B 0x61b0 COPIAR B BYTES SALTEADOS, uno por cada cuatro del destino: es como se tocan solo los patrones de una tanda de sprites sin pisar sus filas ni sus colores.
+C 0x61b1 el byte
+C 0x61b3 y cuatro bytes de salto: el siguiente sprite
+L 0x46a0 saca_una_columna_del_bufer
+C 0x46a0 un byte del bufer
+C 0x46a4 de ocho en ocho: una columna entera
+L 0x46b0 gira_tres_veces
+C 0x46ac tres pasadas
+L 0x4c6d remata_el_cuadro_del_jugador
+C 0x4c6d el estado del jugador
+C 0x4c70 de 6 en adelante es un final
+C 0x4c7b se despacha
+L 0x4cc2 fase_4_el_cuadro_entero
+B 0x4cc2 EL CUADRO DE LA FASE TIPO 4, que es la mas cargada: ritmo de la figura, estado del jugador, movimiento de la figura, ritmo de la segunda, lo que sujeta y el relevo. Seis llamadas, en ese orden.
+L 0x5388 mueve_el_tramo_de_arriba
+C 0x5388 lo que hay apuntado
+C 0x538e el bit 7 de la posicion
+C 0x5392 y entonces la casilla de 0xE213
+C 0x5398 dos mas
+C 0x539a por debajo de cuatro no se pinta
+L 0x5bdb pinta_una_fila_de_la_pieza
+C 0x5bdb el indice de la tabla
+C 0x5bdc corrido por el desplazamiento de la pieza
+L 0x6db7 repite_la_tanda_cuatro_veces
+C 0x6db7 se guarda el puntero
+C 0x6db9 y se vuelca la misma tanda otra vez
+L 0x5bb5 pasa_al_hueco_siguiente
+C 0x5bb7 cuatro bytes por hueco
+L 0x5c85 pasa_a_la_pieza_siguiente
+C 0x5c87 cuatro bytes por pieza
+L 0x4c40 elige_el_remate_del_cuadro
+C 0x4c40 por debajo de siete
+C 0x4c44 y segun el tipo de fase
+L 0x6115 pon_al_jugador_en_su_sitio
+C 0x6115 el jugador
+C 0x611a la otra coordenada
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x69a5 los parametros de un decorado
+C 0x69b0 o los del otro, cambiando solo tres bytes
+C 0x46b2 una pasada del giro
+C 0x4cc2 el ritmo de la figura grande, lo primero del cuadro
+C 0x4cc5 y el estado del jugador detras
+C 0x5574 el indice del dibujo
+C 0x5576 corrido por el desplazamiento de la pieza
+C 0x5577 si no desborda, va tal cual
+C 0x557a y si desborda, se le da la vuelta a tres bits
+C 0x69b6 la referencia del decorado
+C 0x69bc y la escena que va encima
+C 0x71dc la escena de la fase
+C 0x71df el destino de los patrones
+C 0x71e5 y el bloque comprimido que la remata
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x4347 carga_los_graficos_del_titulo
+L 0x43db saca_los_sprites_de_pantalla
+L 0x4491 imprime_tres_bytes_bcd
+L 0x452e pinta_el_cursor
+L 0x4577 vuelca_bloque_a_vram
+L 0x45cd descomprime_en_de
+L 0x45d1 descomprime_donde_quedo
+L 0x4612 copia_dos_tercios
+L 0x462f vuelca_lista_de_patrones
+L 0x46e1 rota_el_bufer_un_bit
+L 0x4708 vuelca_los_registros_del_vdp
+L 0x473a lee_un_puerto_del_psg
+L 0x4e93 mira_la_caja_del_final
+L 0x510c mete_un_sprite_con_patron
+L 0x5166 arranca_gesto_con_a
+L 0x5304 apunta_por_indice
+L 0x55fe libera_dos_huecos
+L 0x5625 patrones_del_movil_quieto
+L 0x5655 pinta_la_columna_que_entra
+L 0x5687 corre_el_decorado_bc
+L 0x578e vuelca_franja_con_referencias
+L 0x5bc0 pinta_pieza_de_dos_filas
+L 0x6019 carga_el_fondo_de_la_fase_1
+L 0x603d carga_el_fondo_de_la_fase_3
+L 0x6047 pon_b_bytes_a_cero
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x61ab reparte_la_lista_de_siete
+L 0x69c8 elige_el_decorado_alterno
+L 0x6db5 vuelca_la_tanda_cuatro_veces
+L 0x71d9 monta_el_decorado_de_la_fase_2
+L 0x72e1 monta_la_franja_de_abajo
+L 0x758b recorta_el_indice
+L 0x7a34 escribe_el_volumen_general
+L 0x7adb fija_la_duracion
+L 0x7b8a escribe_la_nota
