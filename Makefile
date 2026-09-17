@@ -78,8 +78,8 @@ test:
 
 # Dibuja los bloques de datos graficos declarados en el .notes, para MIRARLOS.
 imagenes: $(ROM)
-	@mkdir -p work/gfx
-	python3 tools/dibuja.py $(ROM) $(ORG) $(SRC)/circus.notes work/gfx
+	@mkdir -p docs/imagenes
+	python3 tools/graficos.py $(ROM) $(ORG) docs/imagenes
 
 # LA WEB
 #

@@ -849,8 +849,9 @@ B 0x458f COPIAR DE VRAM A VRAM, byte a byte y pasando por el Z80: el VDP no sabe
 C 0x458f lee de (HL) en la VRAM
 C 0x4593 y escribe en (DE), tambien en la VRAM
 C 0x4599 una menos
-L 0x459f duplica_los_tercios_de_color
-C 0x459f el primer tercio de la tabla de color
+L 0x459f duplica_los_tercios_de_patrones
+B 0x459f EL REPARTO DE LA VRAM, QUE HAY QUE LEER EN LOS REGISTROS Y NO EN LAS DIRECCIONES. Los ocho valores de 0x4722 son `02 E2 0E 7F 07 76 03 E1`, y en SCREEN 2 el R3 y el R4 no son direcciones sino base y mascara: del R3=0x7F solo cuenta el bit 7, que esta a CERO, o sea que la tabla de COLOR va en 0x0000; del R4=0x07 solo cuenta el bit 2, que esta puesto, o sea que la de PATRONES va en 0x2000. Asi que esta rutina duplica los PATRONES y la de 0x45B3 el COLOR, al reves de lo que parece. Lo confirma el propio cartucho dos lineas mas arriba: 0x434A manda "los patrones del titulo" a 0x3600 -tabla de patrones- y 0x4350 su color a 0x1600 -tabla de color-, y las dos direcciones son la misma celda de tercios distintos.
+C 0x459f el primer tercio de la tabla de PATRONES: R4=0x07 la pone en 0x2000
 C 0x45a2 al segundo
 C 0x45a5 dos kilobytes
 
@@ -859,9 +860,9 @@ C 0x45a5 dos kilobytes
 # COMENTARIOS DE LINEA
 # ======================================================================
 C 0x45ab los otros dos kilobytes
-L 0x45b0 duplica_los_tercios_de_patrones
-C 0x45b0 primero el color
-C 0x45b3 y luego los patrones, del primer tercio a los otros dos
+L 0x45b0 duplica_las_dos_tablas
+C 0x45b0 primero los patrones
+C 0x45b3 y luego el color, que R3=0x7F deja en 0x0000
 L 0x45bb carga_la_pantalla_de_fondo
 C 0x45bb los dos bloques comprimidos del fondo
 C 0x45be y se reparten a los tres tercios

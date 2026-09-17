@@ -1051,22 +1051,26 @@ copia_vram_a_vram:
 	or b			;459b
 	jr nz,copia_vram_a_vram		;459c
 	ret			;459e
-duplica_los_tercios_de_color:
-	ld de,02000h		;459f   ; el primer tercio de la tabla de color
+
+; ----------------------------------------------------------------------
+; EL REPARTO DE LA VRAM, QUE HAY QUE LEER EN LOS REGISTROS Y NO EN LAS DIRECCIONES. Los ocho valores de 0x4722 son `02 E2 0E 7F 07 76 03 E1`, y en SCREEN 2 el R3 y el R4 no son direcciones sino base y mascara: del R3=0x7F solo cuenta el bit 7, que esta a CERO, o sea que la tabla de COLOR va en 0x0000; del R4=0x07 solo cuenta el bit 2, que esta puesto, o sea que la de PATRONES va en 0x2000. Asi que esta rutina duplica los PATRONES y la de 0x45B3 el COLOR, al reves de lo que parece. Lo confirma el propio cartucho dos lineas mas arriba: 0x434A manda "los patrones del titulo" a 0x3600 -tabla de patrones- y 0x4350 su color a 0x1600 -tabla de color-, y las dos direcciones son la misma celda de tercios distintos.
+; ----------------------------------------------------------------------
+duplica_los_tercios_de_patrones:
+	ld de,02000h		;459f   ; el primer tercio de la tabla de PATRONES: R4=0x07 la pone en 0x2000
 	ld hl,02800h		;45a2   ; al segundo
 L_45A5:
 	ld bc,00800h		;45a5   ; dos kilobytes
 	call copia_vram_a_vram		;45a8
 	ld bc,00800h		;45ab   ; los otros dos kilobytes
 	jr copia_vram_a_vram		;45ae
-duplica_los_tercios_de_patrones:
-	call duplica_los_tercios_de_color		;45b0   ; primero el color
-	ld de,00000h		;45b3   ; y luego los patrones, del primer tercio a los otros dos
+duplica_las_dos_tablas:
+	call duplica_los_tercios_de_patrones		;45b0   ; primero los patrones
+	ld de,00000h		;45b3   ; y luego el color, que R3=0x7F deja en 0x0000
 	ld hl,00800h		;45b6
 	jr L_45A5		;45b9
 carga_la_pantalla_de_fondo:
 	call descomprime_los_dos_bloques		;45bb   ; los dos bloques comprimidos del fondo
-	jr duplica_los_tercios_de_patrones		;45be   ; y se reparten a los tres tercios
+	jr duplica_las_dos_tablas		;45be   ; y se reparten a los tres tercios
 descomprime_los_dos_bloques:
 	ld hl,047deh		;45c0   ; el primero trae su destino delante
 	call descomprime		;45c3
@@ -1625,7 +1629,7 @@ prepara_la_cortinilla:
 	ld bc,000d0h		;4b60   ; 208 celdas
 	ld a,0f0h		;4b63   ; con el patron 0xF0
 	call rellena_vram		;4b65
-	jp duplica_los_tercios_de_patrones		;4b68
+	jp duplica_las_dos_tablas		;4b68
 
 ; ----------------------------------------------------------------------
 ; UN PASO DE CORTINILLA. Avanza 32 celdas -o sea una fila entera- y pinta la franja en DOS sitios a la vez: en la posicion que toca y en su reflejo respecto de 0x3AAA, restando con `sbc hl,de`. Por eso la cortina se cierra desde arriba y desde abajo al mismo tiempo.
