@@ -1516,3 +1516,320 @@ C 0x541a su hueco en el bufer de sprites
 C 0x541d y su posicion
 C 0x5420 tres
 C 0x5426 estado cero: no esta activo
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x5431 dos bytes por movil
+C 0x5433 y dos de estado
+L 0x543b arranca_movil_activo
+C 0x543b el movil que ya estaba en marcha
+L 0x5440 arranca_movil_parado
+C 0x5443 se marca el hueco de sprite como libre
+C 0x5448 donde cae en el decorado
+L 0x5472 posicion_en_el_decorado
+B 0x5472 DONDE CAE ALGO DENTRO DEL DECORADO: la posicion del decorado (0xE055) menos 0x140. Es la conversion entre "donde va el mundo" y "donde se ve".
+C 0x5472 el desplazamiento fijo
+C 0x5475 la posicion del decorado
+L 0x547a pone_un_movil_en_su_sitio
+B 0x547a COLOCAR UN MOVIL, si su hueco esta libre y la distancia es menor de TRES. El margen es asi de estrecho a proposito: el movil solo aparece cuando su casilla del decorado pasa justo por su sitio.
+C 0x547a el hueco ocupado?
+C 0x547e la distancia
+C 0x5480 tres pixeles de margen
+C 0x5484 el contador de apariciones
+C 0x548a y el de la tanda
+C 0x548b cada dieciseis
+C 0x5490 doce menos
+C 0x5496 o dieciseis si venia de 0x20
+L 0x549b elige_la_tabla_del_movil
+B 0x549b LA TABLA DE MOVILES DEPENDE DE LA FASE: la 1 usa la de 0x54C5, las de bit 1 puesto la de 0x5A6F y el resto la de 0x5F8F. Las tres tienen el mismo formato, 32 pares de (bandera, altura), y de ahi salen los dos bytes que se copian al estado del movil.
+C 0x549b el indice, por dos: son pares
+C 0x549d el tipo de fase
+C 0x54a0 la tabla de la fase 1
+C 0x54a7 la de las fases pares
+C 0x54ae y la de las demas
+C 0x54b2 indexada
+C 0x54b5 el primer byte al estado del movil
+C 0x54b9 y el segundo detras
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x7a3d suena_un_cuadro
+B 0x7a3d EL REPRODUCTOR DE SONIDO, una vez por cuadro y lo primero que hace la interrupcion. Lleva TRES voces, cada una con once bytes de estado a partir de 0xE010, y las recorre con IX saltando de once en once mientras C va 1, 3, 5: son los registros de periodo del PSG, dos por canal.
+C 0x7a3d el volumen general
+C 0x7a43 el primer canal del PSG
+C 0x7a45 el estado de la primera voz
+C 0x7a4a tres voces
+C 0x7a4c once bytes cada una
+C 0x7a50 si la voz esta callada, no se toca
+C 0x7a57 dos registros por canal
+C 0x7a5a y once bytes hasta la voz siguiente
+L 0x7a5f avanza_una_voz
+B 0x7a5f AVANZAR UNA VOZ. (ix+0) es lo que le queda a la nota en curso; mientras no llegue a cero no se lee nada de la partitura. Cuando se agota, se lee el byte siguiente, y el valor 0xFE es la marca de repeticion.
+C 0x7a5f el bit 6 del estado
+C 0x7a6d lo que le queda a la nota
+C 0x7a70 todavia suena: nada que hacer
+C 0x7a71 por donde va la partitura
+C 0x7a78 0xFE: la marca de volver al principio
+C 0x7a86 el nibble alto manda
+C 0x7a88 0x2n cambia el instrumento de la voz
+C 0x7a8f el nibble bajo es el numero
+C 0x7a96 0x1n toca el envolvente
+C 0x7a9d y los cinco bits de abajo, su forma
+C 0x7aac el estado de la voz
+C 0x7aaf el bit 6: la voz esta encadenada a otra
+C 0x7ab4 y solo en el canal 5
+C 0x7aba se guarda por donde va la partitura
+C 0x7ac4 el nibble alto es la DURACION
+C 0x7ac7 y el bajo, cruzado, la nota
+C 0x7aca el byte siguiente completa
+C 0x7acc la partitura queda apuntada
+C 0x7ad3 y se convierte en periodo
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x7adc la duracion que toca
+C 0x7adf a la cuenta atras de la nota
+C 0x7ae2 y tres mas al contador de apagado
+L 0x7ae9 calla_la_voz
+C 0x7ae9 se apaga el envolvente
+C 0x7af3 y el estado de la voz, a cero: se calla
+L 0x7af9 sostiene_la_nota
+B 0x7af9 EL SOSTENIDO. Baja a la vez la cuenta de la nota (ix+0) y la del apagado (ix+8); cuando las dos coinciden y quedan menos de tres, empieza a bajar el volumen de (ix+7). Es lo que hace que una nota larga se apague sola sin una tabla de envolvente.
+C 0x7af9 la nota
+C 0x7afc se acabo: a por la siguiente
+C 0x7aff y el contador de apagado
+C 0x7b05 cuando se juntan
+C 0x7b0a y quedan menos de tres
+C 0x7b12 el volumen de la voz
+C 0x7b15 uno menos
+C 0x7b16 si llego a cero, ya no baja mas
+L 0x7b1b escribe_el_volumen
+C 0x7b1c el canal por dos
+C 0x7b1d +0x88: el registro de volumen del PSG de ese canal
+L 0x7b23 lee_los_modificadores
+B 0x7b23 LOS MODIFICADORES DE LA PARTITURA, leidos en cadena por el nibble alto: 0xDn cambia el paso del arpegio, 0xFn el vibrato y 0xEn el volumen de la voz. Cada uno se lleva su byte y deja el siguiente en A, de modo que pueden venir varios seguidos delante de una nota.
+C 0x7b25 0xDn: el paso
+C 0x7b2c guardado en (ix+10)
+C 0x7b31 0xFn
+C 0x7b37 a (ix+6)
+C 0x7b3c 0xEn
+C 0x7b42 a (ix+5)
+C 0x7b47 el nibble bajo, que es cuantas veces
+C 0x7b4f y se suma el paso esas veces: de ahi sale la duracion
+C 0x7b54 la duracion de la nota
+C 0x7b59 y por donde se queda la partitura
+C 0x7b5f el nibble alto del byte siguiente
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x79fa repite_o_encadena
+B 0x79fa LA MARCA 0xFE DE LA PARTITURA: detras viene cuantas vueltas hay que dar. (ix+9) lleva las que van; al llegar a la cuenta la voz se calla, y si el byte es negativo el bucle no tiene fin. Es lo que hace que la musica de fondo se repita sola y un efecto suene una vez.
+C 0x79fb las vueltas dadas
+C 0x79fe una mas
+C 0x79ff contra las que pide la partitura
+C 0x7a00 se acabo: la voz calla
+C 0x7a03 cuenta negativa: no se agota nunca
+C 0x7a0e y vuelve a arrancar el mismo sonido
+C 0x7a13 con las vueltas apuntadas
+L 0x7a17 abre_o_cierra_el_canal
+B 0x7a17 ABRIR O CERRAR UN CANAL en el registro 7 del PSG. El bit que toca sale de rotar el numero de canal tres veces, y D dice si se pone o se quita. Ademas fuerza el bit 2 -el tercer canal de tono- salvo si el bit 5 esta puesto, en cuyo caso lo quita: ese canal es el que se cede al RUIDO.
+C 0x7a17 la copia del registro 7
+C 0x7a1b el canal
+C 0x7a20 el primero no lleva ajuste
+C 0x7a21 tres rotaciones: el bit del canal
+C 0x7a24 D=1 pone, D=0 quita
+C 0x7a27 invertido y cruzado: se quita
+C 0x7a2b o se anade
+C 0x7a2c el tercer canal de tono, abierto
+C 0x7a2e salvo si esta pedido como ruido
+C 0x7a35 y la copia se guarda en RAM
+C 0x7a38 registro 7 del PSG
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x5505 mueve_el_movil_activo
+B 0x5505 MOVER UN MOVIL QUE YA ESTA EN MARCHA. Su avance depende de lo que este pulsando el jugador Y del contador de cuadros: `rra / sbc a,a` convierte el bit 0 del contador en 0 o -1, y eso se suma al sentido. O sea que el movil se mueve a un paso y medio por cuadro, no a uno entero.
+C 0x5505 el sentido que pulsa el jugador
+C 0x5509 el contador de cuadros
+C 0x550d su bit 0
+C 0x550e convertido en 0 o -1
+C 0x550f sumado al sentido
+C 0x5510 si sale cero, no se mueve
+C 0x5513 y se aplica a su posicion
+C 0x5515 con menos de dos no hay nada que repintar
+C 0x5526 el bit 7 del movil dice cual de las dos listas usa
+C 0x552a una, con seis por diez
+C 0x5532 y la otra, con ocho
+L 0x5537 pinta_el_movil
+C 0x5538 su posicion
+C 0x553b la tabla de cuatro
+C 0x553f dos bits de la coordenada
+C 0x5541 por uno: son bytes
+C 0x5548 de posicion a celda de pantalla
+L 0x5551 vuelca_recortando_por_el_borde
+B 0x5551 VOLCAR UN BLOQUE RECORTANDO POR EL BORDE DERECHO. Calcula cuantas columnas caben de verdad (`ld a,e / or 0e0h / neg` da lo que falta hasta el final de la fila) y, si no caben todas, recorta el ancho y se salta el resto. Es lo que deja que un dibujo asome a medias por el borde sin ensuciar la fila de abajo.
+C 0x5551 la marca de escritura del VDP
+C 0x5558 el ancho
+C 0x5559 y una fila son 32 celdas
+C 0x555e la columna
+C 0x5561 lo que queda hasta el borde
+C 0x5565 cabe entero?
+C 0x5569 si no, se pinta solo lo que cabe
+C 0x556b y el resto se salta
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x55b0 mete_el_movil_en_los_sprites
+B 0x55b0 METER UN MOVIL EN EL BUFER DE SPRITES. Solo se dibuja dentro de una ventana: por encima de 0x3E no se pinta, y por debajo de 4 o a partir de 0x3C se borra. Los patrones van de dieciseis en dieciseis -0x47, 0x57, 0x67...- porque un sprite de 16x16 ocupa cuatro patrones.
+C 0x55b1 fuera de la ventana por arriba
+C 0x55b4 o pegado al borde
+C 0x55b6 el bufer de sprites
+C 0x55bb o demasiado abajo
+C 0x55bf el desplazamiento a su fila
+C 0x55c2 el primer patron
+C 0x55c4 dos sprites
+C 0x55cb el bit 7 del movil: mira al otro lado
+C 0x55d1 y entonces el tercero es el patron 0xC3
+L 0x55d5 apila_sprites_del_movil
+C 0x55d5 el patron
+C 0x55d6 dieciseis mas: el siguiente sprite de 16x16
+C 0x55d9 la fila
+C 0x55da y cuatro bytes por sprite
+L 0x55e0 borra_cinco_sprites
+C 0x55e1 cinco huecos
+L 0x55e9 quita_el_movil
+C 0x55eb donde esta
+C 0x55ee el bit 7
+C 0x55f6 invertido y cruzado con el hueco
+L 0x5601 libera_un_hueco_de_sprite
+B 0x5601 LIBERAR UN HUECO DE SPRITE poniendole 0xC3 en la fila, que es un valor fuera de pantalla, y saltando cuatro bytes al siguiente.
+C 0x5601 la fila que lo saca de la pantalla
+C 0x5604 cuatro bytes por sprite
+L 0x5609 elige_los_patrones_del_movil
+B 0x5609 LOS PATRONES DE UN MOVIL, que cambian con la fase. En la de tipo 3 el dibujo alterna con el bit 2 de su estado -0x94 o 0x98-; las otras dos puertas traen sus parejas fijas.
+C 0x560c solo la fase 3 entra por aqui
+C 0x5610 el bit 2: dos dibujos alternos
+C 0x5612 0x94 o 0x98
+C 0x5618 su pareja de tablas
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x562c la columna, mas el ancho
+C 0x5630 si se sale por el borde
+C 0x5633 la fila 0xC3 lo saca de la pantalla
+L 0x563a mete_un_sprite
+B 0x563a METER UN SPRITE en el bufer: fila, columna, patron y color, cuatro bytes de corrido.
+C 0x563a la fila
+C 0x563c la columna
+C 0x563e el patron
+C 0x5640 y el color
+L 0x5643 pinta_el_borde_del_decorado
+B 0x5643 PINTAR LO QUE VA ENTRANDO POR EL BORDE. Solo se hace cuando el byte alto de la posicion del decorado es cero, o sea en la primera pantalla; el dibujo -3x8 o 3x7- lo elige 0x57A8. Cuando no toca, la posicion se marca con 0xFF.
+C 0x5643 la posicion del decorado
+C 0x5647 fuera de la primera pantalla
+C 0x564b margen de dos
+C 0x5652 la columna que entra
+C 0x5655 que dibujo toca
+C 0x5658 tres filas por ocho
+C 0x5660 o tres por siete
+C 0x566d ocho por tres, por el otro camino
+C 0x5677 y se marca como "nada que pintar"
+L 0x567d desplaza_el_decorado
+B 0x567d EL DESPLAZAMIENTO DEL DECORADO. Suma +1 o -1 -el signo sale de `jp p` sobre el sentido- y de la posicion resultante salen a la vez la fila del sprite del borde (`add a,a / add a,a / add a,014h`) y su patron; el valor 0x34 se cambia por 0xF8, que es el unico caso especial.
+C 0x567d el sentido que pulsa el jugador
+C 0x5681 la parte alta del incremento
+C 0x5686 negativo: -1
+C 0x5687 la posicion del decorado
+C 0x568a se le suma
+C 0x568f el byte alto por cuatro
+C 0x5691 mas veinte: la fila del sprite
+C 0x5693 el caso especial
+C 0x5698 se sustituye
+C 0x56a4 dieciseis mas: el segundo sprite
+C 0x56a8 y si se sale, fuera de pantalla
+L 0x56b3 cuenta_el_paso
+C 0x56b3 la direccion pulsada, sin filtrar
+C 0x56b6 nada pulsado
+C 0x56b7 el bit 3: hacia un lado o hacia el otro
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x56bc las dos posiciones que van juntas
+C 0x56c5 hacia un lado
+C 0x56ca o hacia el otro, las tres a la vez
+L 0x56d4 pinta_la_figura_grande
+B 0x56d4 LA FIGURA GRANDE DEL DECORADO. Elige uno de cuatro dibujos con los bits 1 y 2 de su posicion -`and 006h` sobre una tabla de punteros-, lo pinta, y despues recoloca OCHO sprites a su alrededor con desplazamientos fijos: -0x2E, +0x1E y +9 desde la misma referencia. Es como se le pegan los adornos sin guardarlos en el dibujo.
+C 0x56d5 dos bits: cuatro variantes
+C 0x56d7 la tabla de dibujos
+C 0x56e1 la posicion
+C 0x56e5 convertida en celda
+C 0x56ee 46 a la izquierda
+C 0x56f0 y redondeado a par
+C 0x56f8 treinta a la derecha
+C 0x5700 nueve mas
+C 0x5708 y de vuelta al principio
+L 0x5711 vuelca_la_figura
+B 0x5711 VOLCAR LA FIGURA A LA VRAM, por franjas. Se pintan seis filas de treinta y dos y luego seis grupos de cinco, y cada vez que la columna cruza el borde (`and 01fh`) se llama a 0x57B0, que salta a la fila de abajo.
+C 0x5712 la marca de escritura del VDP
+C 0x5716 treinta y dos celdas
+C 0x571d seis grupos
+C 0x5729 de cinco
+C 0x5731 un indice de patron
+C 0x5734 y al VDP
+C 0x5739 la columna
+C 0x573b final de fila: se baja a la siguiente
+C 0x5747 el patron de relleno del hueco
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x574c el desplazamiento al bloque de abajo
+C 0x5755 quince celdas
+C 0x5761 y otras quince en la fila siguiente
+C 0x5767 el ultimo indice leido
+C 0x5768 menos 0xB8
+C 0x576a dos bits: cuatro variantes
+C 0x576d y con 0xE2 delante sale una direccion del bufer de RAM
+C 0x5777 el tipo de fase decide si hay una segunda copia
+C 0x577d la fila de la otra copia
+L 0x578b vuelca_con_referencias
+B 0x578b VOLCAR UNA FRANJA CON REFERENCIAS. Aqui el cero NO es un indice de patron: es una marca que dice "el trozo que va aqui esta en otro sitio", y el byte siguiente es el desplazamiento hacia atras (`suma_a_a_hl / dec h`, o sea restar). Es una compresion por diccionario metida dentro del propio dibujo, y por eso un decorado largo cabe en tan poco.
+C 0x578e el indice
+C 0x578f cero: es una referencia
+C 0x5793 el desplazamiento
+C 0x5797 hacia atras
+C 0x5798 y de ahi sale el indice de verdad
+C 0x579b al VDP
+C 0x57a0 la columna
+C 0x57a2 final de fila: a la de abajo
+L 0x57a8 que_dibujo_toca
+C 0x57a8 el tipo de fase
+C 0x57ad cero o dos: las que llevan el otro dibujo
+L 0x57b0 baja_una_fila
+C 0x57b0 treinta y dos celdas menos una pagina
+L 0x57b3 avanza_sin_salir_de_la_fila
+B 0x57b3 AVANZAR EL PUNTERO DE VRAM SIN SALIRSE DE LA FILA. Parte el desplazamiento en su trozo de fila (`and 01fh`) y su trozo de columna, los suma por separado y los vuelve a juntar: asi un avance grande no se lleva por delante el principio de la fila de abajo.
+C 0x57b5 la parte de columna
+C 0x57b8 y la de fila
+C 0x57b9 sumada
+C 0x57bc con acarreo a la pagina
+C 0x57c0 las columnas, aparte
+C 0x57c4 y se vuelven a juntar
+C 0x57c7 con el puntero ya recolocado
