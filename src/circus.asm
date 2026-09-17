@@ -1780,11 +1780,11 @@ L_4CA9:
 	ld bc,00080h		;4caf   ; 128 bytes, los 32 sprites
 	jp L_4577		;4cb2   ; y de una tirada
 L_4CB5:
-	call L_57CB		;4cb5
+	call mueve_los_seis_recogibles		;4cb5
 	jr L_4CA3		;4cb8
 L_4CBA:
-	call L_57CB		;4cba
-	call L_5918		;4cbd
+	call mueve_los_seis_recogibles		;4cba
+	call mueve_el_suelto		;4cbd
 	jr L_4CA3		;4cc0
 L_4CC2:
 	call L_5CE3		;4cc2
@@ -1795,10 +1795,10 @@ L_4CC2:
 	call L_5EDB		;4cd1
 	jr L_4CA9		;4cd4
 L_4CD6:
-	call L_5B00		;4cd6
-	call L_5AAF		;4cd9
-	call L_5C1E		;4cdc
-	call L_5B7C		;4cdf
+	call mueve_lo_que_se_empuja		;4cd6
+	call saca_la_siguiente_de_la_cola		;4cd9
+	call mira_la_cola_contra_el_jugador		;4cdc
+	call pinta_la_cola		;4cdf
 	jr L_4CA9		;4ce2
 
 ; ----------------------------------------------------------------------
@@ -2262,7 +2262,7 @@ L_4FD5:
 	call mira_los_tres_moviles		;4fda
 	jr c,L_4FED		;4fdd
 	call mira_los_moviles_de_cerca		;4fdf
-	call L_5A08		;4fe2
+	call mira_los_seis_contra_el_jugador		;4fe2
 	jr c,se_ha_caido		;4fe5
 	call mira_todo_lo_recogible		;4fe7
 jugador_alcanzado:
@@ -3674,61 +3674,70 @@ L_57BD:
 	pop hl			;57c6
 	call prepara_escritura_vram		;57c7   ; con el puntero ya recolocado
 	ret			;57ca
-L_57CB:
-	ld ix,0e180h		;57cb
-	ld de,0e0fch		;57cf
-	ld hl,0e170h		;57d2
-	ld b,006h		;57d5
+
+; ----------------------------------------------------------------------
+; EL BUCLE DE LOS SEIS RECOGIBLES: cada uno tiene su estado en 0xE180, su posicion en 0xE170 y su hueco de sprite en 0xE0FC. Si el estado no es cero se mueve, y si lo es se intenta arrancar.
+; ----------------------------------------------------------------------
+mueve_los_seis_recogibles:
+	ld ix,0e180h		;57cb   ; el estado de cada uno
+	ld de,0e0fch		;57cf   ; su hueco de sprite
+	ld hl,0e170h		;57d2   ; y su posicion
+	ld b,006h		;57d5   ; seis
 L_57D7:
 	push bc			;57d7
 	push hl			;57d8
 	ld a,(ix+000h)		;57d9
-	or a			;57dc
+	or a			;57dc   ; parado?
 	push af			;57dd
-	call nz,L_5855		;57de
+	call nz,mueve_un_recogible		;57de   ; en marcha: se mueve
 	pop af			;57e1
-	call z,arranca_movil_activo		;57e2
+	call z,arranca_movil_activo		;57e2   ; parado: se mira si le toca salir
 	pop hl			;57e5
 	pop bc			;57e6
-	inc hl			;57e7
+	inc hl			;57e7   ; dos bytes de posicion
 	inc hl			;57e8
-	inc ix		;57e9
+	inc ix		;57e9   ; y dos de estado
 	inc ix		;57eb
 	djnz L_57D7		;57ed
-	ld a,(0e052h)		;57ef
-	cp 003h		;57f2
+
+; ----------------------------------------------------------------------
+; EL SEPTIMO, que solo existe en las fases de tipo 3. Su dibujo es de 3x3 y su patron cambia con el contador de cuadros -uno de cada dos, `rra / and 007h / add a,094h`- pero SOLO si el jugador esta pulsando algo: parado, se queda quieto.
+; ----------------------------------------------------------------------
+el_septimo_de_la_fase_3:
+	ld a,(0e052h)		;57ef   ; el tipo de fase
+	cp 003h		;57f2   ; solo la 3 lo tiene
 	ret nz			;57f4
 	ld a,(ix+000h)		;57f5
 	or a			;57f8
 	ret z			;57f9
 	ld de,0e0f8h		;57fa
-	cp 07eh		;57fd
-	jr z,L_5808		;57ff
-	ld a,(0e139h)		;5801
+	cp 07eh		;57fd   ; el valor 0x7E lo trata aparte
+	jr z,pinta_el_septimo		;57ff
+	ld a,(0e139h)		;5801   ; el bit 2 y 3 de (0xE139)
 	and 00ch		;5804
 	jr nz,L_5837		;5806
-L_5808:
+pinta_el_septimo:
 	ld a,038h		;5808
-	ld de,0a038h		;580a
+	ld de,0a038h		;580a   ; la fila y el patron
 	cp (hl)			;580d
 	push de			;580e
-	call nz,L_583E		;580f
+	call nz,coloca_el_septimo		;580f
 	pop de			;5812
-	ld bc,00303h		;5813
-	ld hl,0724ah		;5816
+	ld bc,00303h		;5813   ; tres por tres
+	ld hl,0724ah		;5816   ; su dibujo
 	call pinta_rectangulo		;5819
 	ld hl,0e0f8h		;581c
-	ld (hl),0a3h		;581f
+	ld (hl),0a3h		;581f   ; el sprite que lleva encima
 	inc hl			;5821
 	ld (hl),03ch		;5822
 	inc hl			;5824
-	call direccion_pulsada_cruda		;5825
+	call direccion_pulsada_cruda		;5825   ; se esta pulsando algo?
 	jr z,L_5830		;5828
-	ld a,(0e003h)		;582a
-	rra			;582d
+	ld a,(0e003h)		;582a   ; el contador de cuadros
+	rra			;582d   ; uno de cada dos
 	and 007h		;582e
 L_5830:
-	add a,094h		;5830
+	add a,094h		;5830   ; y de ahi el patron, de 0x94 en adelante
 	ld (hl),a			;5832
 	inc hl			;5833
 	ld (hl),003h		;5834
@@ -3736,280 +3745,313 @@ L_5830:
 L_5837:
 	ld a,(hl)			;5837
 	sub 003h		;5838
-	jr nc,L_5870		;583a
+	jr nc,pinta_un_recogible		;583a
 	jr L_589F		;583c
-L_583E:
-	ld (0e17ch),de		;583e
+coloca_el_septimo:
+	ld (0e17ch),de		;583e   ; su posicion, apuntada
 	ld e,000h		;5842
-	ld bc,00e03h		;5844
+	ld bc,00e03h		;5844   ; catorce por tres
 	call L_6A6D		;5847
-	call L_58B8		;584a
+	call suma_los_estados		;584a
 	ret nz			;584d
-	call posicion_en_el_decorado		;584e
+	call posicion_en_el_decorado		;584e   ; donde cae en el decorado
 	ret nc			;5851
 	jp L_6128		;5852
-L_5855:
-	ld a,(0e052h)		;5855
+
+; ----------------------------------------------------------------------
+; MOVER UNO DE LOS SEIS, con el mismo paso y medio que los moviles: el sentido del jugador mas el bit 0 del contador de cuadros convertido en 0 o -1. La fase de tipo 2 tiene su propia rutina.
+; ----------------------------------------------------------------------
+mueve_un_recogible:
+	ld a,(0e052h)		;5855   ; el tipo de fase
 	cp 002h		;5858
-	jr z,L_58C6		;585a
-	call que_direccion_se_pulsa		;585c
+	jr z,mueve_el_recogible_de_la_fase_2		;585a   ; la fase 2 va por otro lado
+	call que_direccion_se_pulsa		;585c   ; el sentido que pulsa el jugador
 	ld b,a			;585f
-	ld a,(0e003h)		;5860
+	ld a,(0e003h)		;5860   ; el contador de cuadros
 	ld c,a			;5863
-	rra			;5864
-	sbc a,a			;5865
+	rra			;5864   ; su bit 0
+	sbc a,a			;5865   ; como 0 o -1
 	add a,b			;5866
-	add a,(hl)			;5867
+	add a,(hl)			;5867   ; y sumado a la posicion
 	cp 002h		;5868
-	jr c,L_589E		;586a
+	jr c,apaga_el_recogible		;586a
 	inc hl			;586c
-	ld (hl),0a0h		;586d
+	ld (hl),0a0h		;586d   ; se marca en la fila de al lado
 	dec hl			;586f
-L_5870:
+
+; ----------------------------------------------------------------------
+; PINTAR UN RECOGIBLE. Por encima de 0x85 -o sea por debajo en la pantalla- se libera su sprite y se pinta la version quieta (0x72D2); por debajo lleva sprite y el dibujo elegido de la tabla de 0x7242.
+; ----------------------------------------------------------------------
+pinta_un_recogible:
 	ld (hl),a			;5870
-	ld a,(0e130h)		;5871
-	cp 085h		;5874
+	ld a,(0e130h)		;5871   ; la posicion del jugador
+	cp 085h		;5874   ; el umbral
 	jr nc,L_588C		;5876
 	push hl			;5878
-	call elige_los_patrones_del_movil		;5879
+	call elige_los_patrones_del_movil		;5879   ; sus patrones
 	pop hl			;587c
 	push de			;587d
 	ld e,(hl)			;587e
 	inc hl			;587f
 	ld d,(hl)			;5880
-	ld hl,07242h		;5881
-	ld bc,00305h		;5884
+	ld hl,07242h		;5881   ; la tabla de cuatro dibujos
+	ld bc,00305h		;5884   ; tres por cinco
 	call elige_rectangulo_y_pinta		;5887
 	pop de			;588a
 	ret			;588b
 L_588C:
-	call libera_un_hueco_de_sprite		;588c
+	call libera_un_hueco_de_sprite		;588c   ; ya no lleva sprite
 	push de			;588f
 	ld e,(hl)			;5890
 	inc hl			;5891
 	ld d,(hl)			;5892
-	ld hl,072d2h		;5893
+	ld hl,072d2h		;5893   ; y se pinta quieto
 	ld bc,00305h		;5896
 L_5899:
 	call pinta_rectangulo		;5899
 	pop de			;589c
 	ret			;589d
-L_589E:
+apaga_el_recogible:
 	ld (hl),a			;589e
 L_589F:
 	push de			;589f
-	ld bc,00503h		;58a0
+	ld bc,00503h		;58a0   ; cinco por tres
 L_58A3:
 	ld e,(hl)			;58a3
 	inc hl			;58a4
 	ld d,(hl)			;58a5
 	call L_6A6D		;58a6
 	pop de			;58a9
-	call L_58B8		;58aa
-	cp 00fh		;58ad
+	call suma_los_estados		;58aa   ; mira si quedan mas
+	cp 00fh		;58ad   ; si el reparto no cuadra, se deja
 	jr z,L_58B5		;58af
-	ld (ix+000h),000h		;58b1
+	ld (ix+000h),000h		;58b1   ; y si no, se apaga del todo
 L_58B5:
 	jp libera_un_hueco_de_sprite		;58b5
-L_58B8:
+
+; ----------------------------------------------------------------------
+; SUMAR LOS CINCO ESTADOS de los recogibles y quedarse con el nibble bajo: es la cuenta rapida de cuantos quedan sin recoger, sin un contador aparte que pueda descuadrarse.
+; ----------------------------------------------------------------------
+suma_los_estados:
 	ld hl,0e180h		;58b8
-	ld b,005h		;58bb
+	ld b,005h		;58bb   ; cinco
 	ld a,(hl)			;58bd
 L_58BE:
 	inc hl			;58be
 	inc hl			;58bf
-	add a,(hl)			;58c0
+	add a,(hl)			;58c0   ; sumando de dos en dos bytes
 	djnz L_58BE		;58c1
-	and 00fh		;58c3
+	and 00fh		;58c3   ; y el nibble bajo es la cuenta
 	ret			;58c5
-L_58C6:
+
+; ----------------------------------------------------------------------
+; EL RECOGIBLE DE LA FASE 2, que se mueve solo. Si el suelto de 0xE1B0 esta a 0xFE no hay referencia; si no, se mide contra el con una ventana de 0x40 -veinte pixeles a cada lado-. Y cuando no hay nada pulsado, baja uno cada cuatro cuadros.
+; ----------------------------------------------------------------------
+mueve_el_recogible_de_la_fase_2:
 	push de			;58c6
 	push ix		;58c7
 	pop bc			;58c9
-	ld a,(0e1b0h)		;58ca
-	cp 0feh		;58cd
+	ld a,(0e1b0h)		;58ca   ; el suelto
+	cp 0feh		;58cd   ; 0xFE: no hay referencia
 	jr z,L_58DA		;58cf
 	ld d,a			;58d1
 	ld a,(hl)			;58d2
 	sub d			;58d3
-	add a,020h		;58d4
-	cp 040h		;58d6
+	add a,020h		;58d4   ; centrado
+	cp 040h		;58d6   ; sesenta y cuatro de ventana
 	jr c,L_58E3		;58d8
 L_58DA:
-	call direccion_pulsada_cruda		;58da
-	jr z,L_590D		;58dd
+	call direccion_pulsada_cruda		;58da   ; se esta pulsando algo?
+	jr z,baja_uno_de_cada_dos		;58dd
 	bit 3,a		;58df
 	jr nz,L_58EA		;58e1
 L_58E3:
-	ld a,(0e003h)		;58e3
-	and 003h		;58e6
+	ld a,(0e003h)		;58e3   ; el contador de cuadros
+	and 003h		;58e6   ; uno de cada cuatro
 	jr nz,L_58EB		;58e8
 L_58EA:
-	dec (hl)			;58ea
+	dec (hl)			;58ea   ; y entonces baja uno
 L_58EB:
 	ld e,(hl)			;58eb
 	inc hl			;58ec
-	ld d,050h		;58ed
+	ld d,050h		;58ed   ; la fila fija
 	ld (hl),d			;58ef
 	dec hl			;58f0
 	ld a,(hl)			;58f1
 	cp 002h		;58f2
-	jr c,L_5906		;58f4
-	and 00eh		;58f6
-	add a,a			;58f8
+	jr c,lo_deja_quieto		;58f4
+	and 00eh		;58f6   ; tres bits de la posicion
+	add a,a			;58f8   ; por cuatro: cada pieza son cuatro bytes
 	add a,a			;58f9
-	ld hl,05a2fh		;58fa
+	ld hl,05a2fh		;58fa   ; las dieciseis piezas de tres tiles
 	call suma_a_a_hl		;58fd
-	ld bc,00204h		;5900
+	ld bc,00204h		;5900   ; dos por cuatro
 	jp L_5899		;5903
-L_5906:
+lo_deja_quieto:
 	ld (hl),001h		;5906
-	ld bc,00302h		;5908
+	ld bc,00302h		;5908   ; tres por dos
 	jr L_58A3		;590b
-L_590D:
-	ld a,(0e003h)		;590d
-	and 001h		;5910
+baja_uno_de_cada_dos:
+	ld a,(0e003h)		;590d   ; el contador de cuadros
+	and 001h		;5910   ; uno de cada dos
 	jr nz,L_58EB		;5912
 	jr L_58EA		;5914
 L_5916:
 	dec (hl)			;5916
 	ret			;5917
-L_5918:
-	ld hl,0e1bah		;5918
+
+; ----------------------------------------------------------------------
+; EL SUELTO DE LA FASE 2. Mientras (0xE1BA) no sea cero se limita a descontar; cuando llega, decide entre arrancar de nuevo -poniendo la rampa de 0x59FA y la marca 0xFE- o seguir moviendose. El 0xFE es lo que las cajas de contacto leen como "aqui no hay nada".
+; ----------------------------------------------------------------------
+mueve_el_suelto:
+	ld hl,0e1bah		;5918   ; su plazo
 	ld a,(hl)			;591b
-	or a			;591c
+	or a			;591c   ; todavia corre
 	jr nz,L_5916		;591d
-	ld de,0e1b0h		;591f
+	ld de,0e1b0h		;591f   ; el suelto
 	ld a,(de)			;5922
-	cp 002h		;5923
+	cp 002h		;5923   ; por debajo de dos, se reinicia
 	jr c,L_592B		;5925
-	cp 0ffh		;5927
+	cp 0ffh		;5927   ; y 0xFF tambien
 	jr c,L_5947		;5929
 L_592B:
-	ld (hl),080h		;592b
+	ld (hl),080h		;592b   ; el plazo largo
 	xor a			;592d
 	ld (0e1b4h),a		;592e
 	ld (0e1b5h),a		;5931
-	ld hl,059fah		;5934
-	ld (0e1b6h),hl		;5937
-	ld a,0feh		;593a
+	ld hl,059fah		;5934   ; la rampa de catorce valores
+	ld (0e1b6h),hl		;5937   ; apuntada
+	ld a,0feh		;593a   ; y la marca de "no hay nada"
 	ld (de),a			;593c
 	inc de			;593d
-	ld a,050h		;593e
+	ld a,050h		;593e   ; la fila fija
 	ld (de),a			;5940
 	ld (0e217h),a		;5941
-	jp L_59CE		;5944
+	jp mete_el_suelto_en_los_sprites		;5944
 L_5947:
-	ex de,hl			;5947
-	ld a,(0e1b4h)		;5948
+	ex de,hl			;5947   ; aqui se mueve de verdad
+	ld a,(0e1b4h)		;5948   ; esta bloqueado?
 	or a			;594b
-	jr nz,L_59A4		;594c
-	call direccion_pulsada_cruda		;594e
+	jr nz,recorre_la_rampa_del_suelto		;594c
+	call direccion_pulsada_cruda		;594e   ; se esta pulsando algo?
 	jr z,L_5958		;5951
-	bit 3,a		;5953
-	jr z,L_599A		;5955
-	dec (hl)			;5957
+	bit 3,a		;5953   ; el bit 3: hacia un lado
+	jr z,baja_uno_de_cada_dos_cuadros		;5955
+	dec (hl)			;5957   ; dos de golpe
 L_5958:
 	dec (hl)			;5958
 L_5959:
 	ld a,(hl)			;5959
 	inc hl			;595a
 	inc hl			;595b
-	bit 2,a		;595c
+	bit 2,a		;595c   ; los bits 1 y 2 eligen el dibujo
 	jr z,L_5968		;595e
 	bit 1,a		;5960
 	jr nz,L_596C		;5962
-	ld (hl),004h		;5964
+	ld (hl),004h		;5964   ; uno
 	jr L_596E		;5966
 L_5968:
-	ld (hl),000h		;5968
+	ld (hl),000h		;5968   ; otro
 	jr L_596E		;596a
 L_596C:
-	ld (hl),008h		;596c
+	ld (hl),008h		;596c   ; y el tercero
 L_596E:
-	call L_59CE		;596e
+	call mete_el_suelto_en_los_sprites		;596e
+
+; ----------------------------------------------------------------------
+; EL SUELTO CONTRA LOS SEIS RECOGIBLES, con veinticuatro pixeles de margen. Es lo que decide si choca con alguno de ellos.
+; ----------------------------------------------------------------------
+mira_los_seis_contra_el_suelto:
 	ld hl,0e1b0h		;5971
 	ld de,0e170h		;5974
-	ld b,006h		;5977
+	ld b,006h		;5977   ; seis
 L_5979:
 	inc de			;5979
 	ld a,(de)			;597a
 	dec de			;597b
-	cp 002h		;597c
+	cp 002h		;597c   ; los que estan por debajo de dos no cuentan
 	jr c,L_598B		;597e
 	ld a,(de)			;5980
 	or a			;5981
 	jr z,L_598B		;5982
-	add a,018h		;5984
+	add a,018h		;5984   ; veinticuatro de desplazamiento
 	sub (hl)			;5986
-	cp 002h		;5987
-	jr c,L_5990		;5989
+	cp 002h		;5987   ; dos pixeles de margen
+	jr c,bloquea_el_suelto		;5989
 L_598B:
-	inc de			;598b
+	inc de			;598b   ; dos bytes por recogible
 	inc de			;598c
 	djnz L_5979		;598d
 	ret			;598f
-L_5990:
+bloquea_el_suelto:
 	inc hl			;5990
 	inc hl			;5991
-	ld (hl),00ch		;5992
+	ld (hl),00ch		;5992   ; el plazo de bloqueo
 	ld a,001h		;5994
-	ld (0e1b4h),a		;5996
+	ld (0e1b4h),a		;5996   ; y la marca de bloqueado
 	ret			;5999
-L_599A:
-	ld a,(0e003h)		;599a
-	and 001h		;599d
+baja_uno_de_cada_dos_cuadros:
+	ld a,(0e003h)		;599a   ; el contador de cuadros
+	and 001h		;599d   ; uno de cada dos
 	jr nz,L_5959		;599f
 	dec (hl)			;59a1
 	jr L_5959		;59a2
-L_59A4:
-	ld a,(0e1b5h)		;59a4
+
+; ----------------------------------------------------------------------
+; EL SUELTO BLOQUEADO RECORRE SU RAMPA. (0xE1B5) dice en que sentido -y con el bit 0 se decide si el valor de la rampa se suma o se RESTA, con `neg`-, y la rampa se recorre hacia delante o hacia atras. Los valores 0xFE y 0xFF son los topes; al llegar al 0xFF se da la vuelta y al 0xFE se desbloquea.
+; ----------------------------------------------------------------------
+recorre_la_rampa_del_suelto:
+	ld a,(0e1b5h)		;59a4   ; el sentido
 	ld b,a			;59a7
 	inc hl			;59a8
-	ld de,(0e1b6h)		;59a9
-	bit 0,b		;59ad
+	ld de,(0e1b6h)		;59a9   ; por donde va la rampa
+	bit 0,b		;59ad   ; el bit 0 decide el signo
 	ld a,(de)			;59af
 	jr nz,L_59B4		;59b0
-	neg		;59b2
+	neg		;59b2   ; restar en vez de sumar
 L_59B4:
 	add a,(hl)			;59b4
-	ld (hl),a			;59b5
+	ld (hl),a			;59b5   ; y se aplica
 	dec hl			;59b6
-	dec (hl)			;59b7
+	dec (hl)			;59b7   ; dos hacia abajo
 	dec (hl)			;59b8
 	ex de,hl			;59b9
 	bit 0,b		;59ba
 	jr nz,L_59C1		;59bc
-	inc hl			;59be
+	inc hl			;59be   ; la rampa avanza
 	jr L_59C2		;59bf
 L_59C1:
-	dec hl			;59c1
+	dec hl			;59c1   ; o retrocede
 L_59C2:
 	ld a,(hl)			;59c2
-	inc a			;59c3
-	jr nz,L_59EC		;59c4
+	inc a			;59c3   ; 0xFF: el tope
+	jr nz,desbloquea_el_suelto		;59c4
 	dec hl			;59c6
 	inc a			;59c7
-	ld (0e1b5h),a		;59c8
+	ld (0e1b5h),a		;59c8   ; se da la vuelta al sentido
 L_59CB:
 	ld (0e1b6h),hl		;59cb
-L_59CE:
+
+; ----------------------------------------------------------------------
+; METER EL SUELTO EN EL BUFER DE SPRITES. Si su posicion es 0xFE -la marca de "no hay nada"- se le pone la fila 0xC3, que lo saca de la pantalla: el mismo valor que usa el juego para liberar cualquier hueco.
+; ----------------------------------------------------------------------
+mete_el_suelto_en_los_sprites:
 	ld hl,0e1b0h		;59ce
 	ld b,(hl)			;59d1
 	inc hl			;59d2
 	ld c,(hl)			;59d3
-	ld a,0feh		;59d4
+	ld a,0feh		;59d4   ; la marca de "no hay nada"
 	cp b			;59d6
 	jr nz,L_59DB		;59d7
-	ld c,0c3h		;59d9
+	ld c,0c3h		;59d9   ; y entonces, fuera de la pantalla
 L_59DB:
 	inc hl			;59db
 	ld a,(hl)			;59dc
 	inc hl			;59dd
 	ld e,(hl)			;59de
 	ld hl,0e0f8h		;59df
-	add a,084h		;59e2
-	ld (hl),c			;59e4
+	add a,084h		;59e2   ; el patron, de 0x84 en adelante
+	ld (hl),c			;59e4   ; fila, columna, patron y color
 	inc hl			;59e5
 	ld (hl),b			;59e6
 	inc hl			;59e7
@@ -4017,11 +4059,11 @@ L_59DB:
 	inc hl			;59e9
 	ld (hl),e			;59ea
 	ret			;59eb
-L_59EC:
-	inc a			;59ec
+desbloquea_el_suelto:
+	inc a			;59ec   ; 0xFE: el otro tope de la rampa
 	jr nz,L_59CB		;59ed
 	xor a			;59ef
-	ld (0e1b4h),a		;59f0
+	ld (0e1b4h),a		;59f0   ; se desbloquea
 	ld (0e1b5h),a		;59f3
 	inc hl			;59f6
 	jr L_59CB		;59f7
@@ -4037,31 +4079,35 @@ DATA_rampa_59FA:
 ; ======================================================================
 
 
-L_5A08:
-	ld b,006h		;5a08
-	ld de,0e170h		;5a0a
-	ld hl,(0e130h)		;5a0d
+mira_los_seis_contra_el_jugador:
+	ld b,006h		;5a08   ; seis
+	ld de,0e170h		;5a0a   ; sus posiciones
+	ld hl,(0e130h)		;5a0d   ; y la del jugador, las dos coordenadas de un tiron
 L_5A10:
-	ld a,(0e134h)		;5a10
+	ld a,(0e134h)		;5a10   ; el estado del jugador
 	and a			;5a13
-	call z,L_5A1E		;5a14
+	call z,caja_contra_el_jugador		;5a14   ; solo se comprueba corriendo
 	ret c			;5a17
-	inc de			;5a18
+	inc de			;5a18   ; el siguiente
 	djnz L_5A10		;5a19
-	ld de,0e1b0h		;5a1b
-L_5A1E:
+	ld de,0e1b0h		;5a1b   ; y al final, el suelto
+
+; ----------------------------------------------------------------------
+; LA CAJA CONTRA EL JUGADOR: 0x1C por 0x28, centrada con `add a,00eh` y `add a,010h` -o sea, catorce y dieciseis a cada lado-. Devuelve el acarreo puesto si toca, que es lo que corta el bucle de arriba.
+; ----------------------------------------------------------------------
+caja_contra_el_jugador:
 	ld a,(de)			;5a1e
 	inc de			;5a1f
 	sub h			;5a20
-	add a,00eh		;5a21
-	cp 01ch		;5a23
+	add a,00eh		;5a21   ; catorce, o sea centrada
+	cp 01ch		;5a23   ; veintiocho de ancho
 	ret nc			;5a25
 	ld a,(de)			;5a26
 	sub l			;5a27
-	add a,010h		;5a28
-	cp 028h		;5a2a
+	add a,010h		;5a28   ; dieciseis
+	cp 028h		;5a2a   ; y cuarenta en la otra
 	ret nc			;5a2c
-	scf			;5a2d
+	scf			;5a2d   ; acarreo: hay contacto
 	ret			;5a2e
 
 ; ----------------------------------------------------------------------
@@ -4128,101 +4174,109 @@ DATA_pares_5A6F:
 ; ======================================================================
 
 
-L_5AAF:
-	ld a,(0e056h)		;5aaf
+
+; ----------------------------------------------------------------------
+; LA COLA DE COSAS QUE VAN SALIENDO. (0xE26E) es lo que falta para la siguiente y se descuenta cada cuadro; cuando pasa de cero, se busca un hueco libre entre CUATRO y se rellena leyendo cuatro bytes del guion. Al llegar a un 0xFF, el guion vuelve al principio con el puntero guardado en (0xE25A).
+; ----------------------------------------------------------------------
+saca_la_siguiente_de_la_cola:
+	ld a,(0e056h)		;5aaf   ; el numero de fase
 	or a			;5ab2
-	ret z			;5ab3
-	ld hl,0e26eh		;5ab4
+	ret z			;5ab3   ; en el titulo no hay cola
+	ld hl,0e26eh		;5ab4   ; lo que falta para la siguiente
 	ld a,(hl)			;5ab7
-	sub c			;5ab8
+	sub c			;5ab8   ; se descuenta
 	ld (hl),a			;5ab9
-	ret nc			;5aba
+	ret nc			;5aba   ; todavia no toca
 	ld hl,0e25ch		;5abb
-	ld b,004h		;5abe
+	ld b,004h		;5abe   ; cuatro huecos
 L_5AC0:
 	ld a,(hl)			;5ac0
 	or a			;5ac1
-	jr z,L_5ACB		;5ac2
-	inc hl			;5ac4
+	jr z,L_5ACB		;5ac2   ; libre
+	inc hl			;5ac4   ; cuatro bytes por hueco
 	inc hl			;5ac5
 	inc hl			;5ac6
 	inc hl			;5ac7
 	djnz L_5AC0		;5ac8
 	ret			;5aca
 L_5ACB:
-	ld de,(0e26ch)		;5acb
+	ld de,(0e26ch)		;5acb   ; por donde va el guion
 	ld a,(de)			;5acf
-	and 018h		;5ad0
+	and 018h		;5ad0   ; dos bits del primer byte
 	rra			;5ad2
 	rra			;5ad3
 	rra			;5ad4
-	inc a			;5ad5
+	inc a			;5ad5   ; uno mas
 	ld b,a			;5ad6
-	ld a,03ah		;5ad7
+	ld a,03ah		;5ad7   ; y de ahi la fila, de 0x3A en adelante
 L_5AD9:
-	add a,01eh		;5ad9
+	add a,01eh		;5ad9   ; sumando 0x1E por cada paso
 	djnz L_5AD9		;5adb
 	ld (hl),a			;5add
 	ld a,(de)			;5ade
 	inc hl			;5adf
 	ld (hl),a			;5ae0
 	inc hl			;5ae1
-	ld (hl),0d8h		;5ae2
+	ld (hl),0d8h		;5ae2   ; el patron
 	inc hl			;5ae4
 	inc de			;5ae5
 	ld a,(de)			;5ae6
 	ld (hl),a			;5ae7
 	inc de			;5ae8
 	ld a,(de)			;5ae9
-	ld (0e26eh),a		;5aea
+	ld (0e26eh),a		;5aea   ; lo que falta para la siguiente
 	inc de			;5aed
-	ld (0e26ch),de		;5aee
+	ld (0e26ch),de		;5aee   ; y el guion queda apuntado
 	ld hl,(0e26ch)		;5af2
 	ld a,(hl)			;5af5
-	inc a			;5af6
+	inc a			;5af6   ; 0xFF: fin del guion
 	jr nz,L_5AFC		;5af7
-	ld hl,(0e25ah)		;5af9
+	ld hl,(0e25ah)		;5af9   ; y vuelve al principio
 L_5AFC:
 	ld (0e26ch),hl		;5afc
 	ret			;5aff
-L_5B00:
-	call direccion_pulsada_cruda		;5b00
-	jr z,L_5B16		;5b03
-	bit 2,a		;5b05
+mueve_lo_que_se_empuja:
+	call direccion_pulsada_cruda		;5b00   ; lo que se esta pulsando
+	jr z,avanza_con_la_velocidad		;5b03
+	bit 2,a		;5b05   ; el bit 2: hacia donde
 	ld a,(0e270h)		;5b07
-	jr z,L_5B73		;5b0a
-	dec a			;5b0c
-	cp 020h		;5b0d
+	jr z,acelera		;5b0a
+	dec a			;5b0c   ; uno menos
+	cp 020h		;5b0d   ; el tope
 	jr nc,L_5B13		;5b0f
-	ld a,020h		;5b11
+	ld a,020h		;5b11   ; el tope por abajo
 L_5B13:
 	ld (0e270h),a		;5b13
-L_5B16:
-	ld hl,0e270h		;5b16
+
+; ----------------------------------------------------------------------
+; EL AVANCE CON VELOCIDAD ACUMULADA. (0xE270) es la velocidad y (0xE271) el resto: se suman, se guardan los seis bits de abajo del resto, y los dos que se desbordan (`add hl,hl` dos veces y quedarse con H) son los pixeles que se mueve todo este cuadro. Es un acumulador de punto fijo hecho con dos bytes y ninguna division.
+; ----------------------------------------------------------------------
+avanza_con_la_velocidad:
+	ld hl,0e270h		;5b16   ; la velocidad
 	ld a,(hl)			;5b19
 	inc hl			;5b1a
-	add a,(hl)			;5b1b
+	add a,(hl)			;5b1b   ; mas el resto que quedaba
 	ld e,a			;5b1c
 	ld d,000h		;5b1d
-	and 03fh		;5b1f
+	and 03fh		;5b1f   ; y el resto nuevo, seis bits
 	ld (hl),a			;5b21
 	ex de,hl			;5b22
-	add hl,hl			;5b23
+	add hl,hl			;5b23   ; dos veces por dos
 	add hl,hl			;5b24
-	ld c,h			;5b25
+	ld c,h			;5b25   ; y lo que se desborda son los pixeles
 	ld hl,0e14ah		;5b26
-	ld a,(hl)			;5b29
+	ld a,(hl)			;5b29   ; el decorado se corre
 	sub c			;5b2a
 	ld (hl),a			;5b2b
 	push bc			;5b2c
-	call pinta_la_figura_grande		;5b2d
+	call pinta_la_figura_grande		;5b2d   ; se repinta la figura grande
 	pop bc			;5b30
-	ld a,(0e056h)		;5b31
+	ld a,(0e056h)		;5b31   ; el numero de fase
 	or a			;5b34
-	jr nz,L_5B42		;5b35
+	jr nz,L_5B42		;5b35   ; en el titulo no hay segunda capa
 	ld hl,0e14ch		;5b37
 	ld a,(hl)			;5b3a
-	sub c			;5b3b
+	sub c			;5b3b   ; la otra referencia tambien se corre
 	ld (hl),a			;5b3c
 	push bc			;5b3d
 	call L_5655		;5b3e
@@ -4233,48 +4287,49 @@ L_5B42:
 	ld a,c			;5b45
 	or a			;5b46
 	jr z,L_5B4E		;5b47
-	neg		;5b49
+	neg		;5b49   ; al reves para el desplazamiento del decorado
 	ld c,a			;5b4b
-	ld b,0ffh		;5b4c
+	ld b,0ffh		;5b4c   ; y con el byte alto a 0xFF: negativo
 L_5B4E:
 	call L_5687		;5b4e
 	pop bc			;5b51
-	ld hl,0e25ch		;5b52
+corre_la_cola_con_la_velocidad:
+	ld hl,0e25ch		;5b52   ; los cuatro huecos de la cola
 	ld b,004h		;5b55
 L_5B57:
 	push bc			;5b57
 	push hl			;5b58
 	ld a,(hl)			;5b59
-	or a			;5b5a
+	or a			;5b5a   ; vacio
 	jr z,L_5B6A		;5b5b
 	inc hl			;5b5d
 	inc hl			;5b5e
 	ld a,(hl)			;5b5f
-	sub c			;5b60
+	sub c			;5b60   ; se corre lo que toque
 	ld (hl),a			;5b61
-	ld a,003h		;5b62
+	ld a,003h		;5b62   ; al llegar a tres
 	cp (hl)			;5b64
 	pop hl			;5b65
 	push hl			;5b66
-	call nc,L_5BF3		;5b67
+	call nc,apaga_un_hueco_de_la_cola		;5b67   ; se apaga
 L_5B6A:
 	pop hl			;5b6a
 	pop bc			;5b6b
-	inc hl			;5b6c
+	inc hl			;5b6c   ; cuatro bytes por hueco
 	inc hl			;5b6d
 	inc hl			;5b6e
 	inc hl			;5b6f
 	djnz L_5B57		;5b70
 	ret			;5b72
-L_5B73:
-	inc a			;5b73
-	cp 080h		;5b74
+acelera:
+	inc a			;5b73   ; uno mas
+	cp 080h		;5b74   ; el tope por arriba
 	jr c,L_5B7A		;5b76
-	ld a,080h		;5b78
+	ld a,080h		;5b78   ; y se clava ahi
 L_5B7A:
 	jr L_5B13		;5b7a
-L_5B7C:
-	ld hl,0e25ch		;5b7c
+pinta_la_cola:
+	ld hl,0e25ch		;5b7c   ; los cuatro huecos
 	ld b,004h		;5b7f
 L_5B81:
 	push hl			;5b81
@@ -4284,35 +4339,35 @@ L_5B81:
 	jr z,L_5BB5		;5b85
 	ex af,af'			;5b87
 	inc hl			;5b88
-	ld d,(hl)			;5b89
+	ld d,(hl)			;5b89   ; la posicion del hueco
 	inc hl			;5b8a
 	ld e,(hl)			;5b8b
 	ld c,e			;5b8c
 	inc hl			;5b8d
 	ld b,(hl)			;5b8e
-	call posicion_a_celda		;5b8f
+	call posicion_a_celda		;5b8f   ; convertida en celda
 	push de			;5b92
 	push bc			;5b93
 	ld a,c			;5b94
-	and 006h		;5b95
+	and 006h		;5b95   ; tres bits de la columna
 	ld c,a			;5b97
-	add a,a			;5b98
+	add a,a			;5b98   ; por cinco: cinco bytes de indices por variante
 	add a,a			;5b99
 	add a,c			;5b9a
 	rra			;5b9b
-	ld hl,07527h		;5b9c
+	ld hl,07527h		;5b9c   ; la tabla de veinte indices
 	call suma_a_a_hl		;5b9f
 	push hl			;5ba2
-	call L_5BBE		;5ba3
+	call pinta_dos_o_tres_celdas		;5ba3   ; la fila de arriba
 	ld a,c			;5ba6
-	add a,00fh		;5ba7
+	add a,00fh		;5ba7   ; quince mas para la de abajo
 	ex af,af'			;5ba9
 	pop hl			;5baa
 	pop bc			;5bab
 	pop de			;5bac
-	ld a,020h		;5bad
+	ld a,020h		;5bad   ; y la fila siguiente, 32 celdas
 	call suma_a_a_de		;5baf
-	call L_5BBE		;5bb2
+	call pinta_dos_o_tres_celdas		;5bb2
 L_5BB5:
 	pop bc			;5bb5
 	pop hl			;5bb6
@@ -4322,28 +4377,32 @@ L_5BB5:
 	inc hl			;5bba
 	djnz L_5B81		;5bbb
 	ret			;5bbd
-L_5BBE:
+
+; ----------------------------------------------------------------------
+; PINTAR LA FILA DE UNA PIEZA DE LA COLA, de dos o tres celdas segun el ancho que traiga B. Al indice de la tabla se le SUMA C, que es el desplazamiento de patrones de esa pieza: la misma tabla de veinte valores sirve para todas las piezas cambiando ese sumando.
+; ----------------------------------------------------------------------
+pinta_dos_o_tres_celdas:
 	ex af,af'			;5bbe
-	ld c,a			;5bbf
+	ld c,a			;5bbf   ; el desplazamiento de patrones
 L_5BC0:
 	push bc			;5bc0
-	ld b,002h		;5bc1
+	ld b,002h		;5bc1   ; dos celdas
 	call L_5BDB		;5bc3
 	pop bc			;5bc6
 	dec b			;5bc7
-	jr z,L_5BE5		;5bc8
+	jr z,pinta_una_celda		;5bc8
 	dec b			;5bca
 L_5BCB:
 	ld a,(hl)			;5bcb
-	add a,c			;5bcc
+	add a,c			;5bcc   ; el indice, corrido por el desplazamiento
 	call escribe_en_vram		;5bcd
 	inc de			;5bd0
 	djnz L_5BCB		;5bd1
 	inc hl			;5bd3
 	ld a,(hl)			;5bd4
-	dec a			;5bd5
+	dec a			;5bd5   ; un uno en la tabla marca que no hay hueco
 	jr z,L_5BD9		;5bd6
-	dec de			;5bd8
+	dec de			;5bd8   ; y entonces se retrocede una celda
 L_5BD9:
 	ld b,002h		;5bd9
 L_5BDB:
@@ -4354,30 +4413,30 @@ L_5BDB:
 	inc de			;5be1
 	djnz L_5BDB		;5be2
 	ret			;5be4
-L_5BE5:
+pinta_una_celda:
 	inc hl			;5be5
 	inc hl			;5be6
 	ld a,(hl)			;5be7
-	or a			;5be8
+	or a			;5be8   ; cero: no hay nada que pintar
 	jr z,L_5BEC		;5be9
 	dec de			;5beb
 L_5BEC:
 	ld a,(hl)			;5bec
-	add a,c			;5bed
+	add a,c			;5bed   ; el indice corrido
 	call escribe_en_vram		;5bee
 	inc hl			;5bf1
 	ret			;5bf2
-L_5BF3:
-	ld c,(hl)			;5bf3
-	ld (hl),000h		;5bf4
+apaga_un_hueco_de_la_cola:
+	ld c,(hl)			;5bf3   ; el tipo de pieza
+	ld (hl),000h		;5bf4   ; el hueco queda libre
 	inc hl			;5bf6
 	ld d,(hl)			;5bf7
 	inc hl			;5bf8
 	ld e,(hl)			;5bf9
 	inc hl			;5bfa
 	ld b,(hl)			;5bfb
-	call posicion_a_celda		;5bfc
-	ld hl,05c14h		;5bff
+	call posicion_a_celda		;5bfc   ; la posicion, en celda
+	ld hl,05c14h		;5bff   ; los diez ceros: borra por donde paso
 	push de			;5c02
 	push bc			;5c03
 	call L_5BC0		;5c04
@@ -4386,9 +4445,9 @@ L_5BF3:
 	ld a,020h		;5c09
 	call suma_a_a_de		;5c0b
 	ld a,c			;5c0e
-	add a,00fh		;5c0f
+	add a,00fh		;5c0f   ; quince mas: la fila de abajo
 	ex af,af'			;5c11
-	jr L_5BBE		;5c12
+	jr pinta_dos_o_tres_celdas		;5c12
 
 ; ----------------------------------------------------------------------
 ; DATOS diez_ceros: los recorre 0x5BFF
@@ -4401,69 +4460,77 @@ DATA_diez_ceros:
 ; ======================================================================
 
 
-L_5C1E:
-	ld a,(0e134h)		;5c1e
-	cp 005h		;5c21
+
+; ----------------------------------------------------------------------
+; LA COLA CONTRA EL JUGADOR. Solo se mira en los estados por debajo de 5, y la ventana no es fija: el alto sale del propio tipo de pieza (`add a,a` tres veces mas ocho), o sea que una pieza mas alta se toca antes.
+; ----------------------------------------------------------------------
+mira_la_cola_contra_el_jugador:
+	ld a,(0e134h)		;5c1e   ; el estado del jugador
+	cp 005h		;5c21   ; de 5 en adelante, ya no
 	ret nc			;5c23
 	ld hl,0e25ch		;5c24
-	ld b,004h		;5c27
+	ld b,004h		;5c27   ; los cuatro huecos
 L_5C29:
 	push hl			;5c29
 	push bc			;5c2a
 	ld a,(hl)			;5c2b
-	or a			;5c2c
+	or a			;5c2c   ; vacio
 	jr z,L_5C85		;5c2d
-	ld de,(0e130h)		;5c2f
+	ld de,(0e130h)		;5c2f   ; la posicion del jugador
 	inc hl			;5c33
 	inc hl			;5c34
 	ld a,d			;5c35
 	sub (hl)			;5c36
-	add a,010h		;5c37
+	add a,010h		;5c37   ; dieciseis de margen
 	ld c,a			;5c39
 	inc hl			;5c3a
-	ld a,(hl)			;5c3b
-	add a,a			;5c3c
+	ld a,(hl)			;5c3b   ; el tipo de pieza
+	add a,a			;5c3c   ; por ocho
 	add a,a			;5c3d
 	add a,a			;5c3e
-	add a,008h		;5c3f
+	add a,008h		;5c3f   ; mas ocho: el alto de la caja
 	cp c			;5c41
 	jr c,L_5C85		;5c42
 	dec hl			;5c44
 	dec hl			;5c45
 	ld a,e			;5c46
 	sub (hl)			;5c47
-	add a,01ch		;5c48
-	cp 024h		;5c4a
+	add a,01ch		;5c48   ; veintiocho en la otra
+	cp 024h		;5c4a   ; treinta y seis de ventana
 	jr nc,L_5C85		;5c4c
-	cp 004h		;5c4e
-	jr c,L_5C59		;5c50
+	cp 004h		;5c4e   ; si cae en los cuatro de arriba, se ha saltado por encima
+	jr c,lo_ha_saltado		;5c50
 	pop bc			;5c52
 	pop hl			;5c53
 	scf			;5c54
-	call se_ha_caido		;5c55
+	call se_ha_caido		;5c55   ; y si no, se choca
 	ret			;5c58
-L_5C59:
+
+; ----------------------------------------------------------------------
+; SALTAR POR ENCIMA DE UNA PIEZA, y aqui esta el premio por ENCADENAR: (0xE272) cuenta los saltos seguidos, sube hasta un tope de CUATRO, y lo que se cobra es ese contador por 512. O sea 512, 1024, 1536 y 2048 puntos: saltar seguido vale el cuadruple.
+; ----------------------------------------------------------------------
+lo_ha_saltado:
 	ld a,c			;5c59
-	cp 006h		;5c5a
+	cp 006h		;5c5a   ; seis pixeles de holgura
 	jr c,L_5C85		;5c5c
 	pop bc			;5c5e
 	pop hl			;5c5f
-	ld hl,051e9h		;5c60
+	ld hl,051e9h		;5c60   ; la rampa del salto
 	call arranca_gesto_con_cero		;5c63
 	ld a,001h		;5c66
-	ld (0e134h),a		;5c68
-	ld a,(0e272h)		;5c6b
-	inc a			;5c6e
-	cp 004h		;5c6f
+	ld (0e134h),a		;5c68   ; estado 1: en el aire
+	ld a,(0e272h)		;5c6b   ; los saltos encadenados
+	inc a			;5c6e   ; uno mas
+	cp 004h		;5c6f   ; el tope son cuatro
 	jr c,L_5C75		;5c71
 	ld a,004h		;5c73
 L_5C75:
 	ld (0e272h),a		;5c75
 	ld e,000h		;5c78
-	add a,a			;5c7a
+	add a,a			;5c7a   ; por dos, en el byte alto: 512 por cada uno
 	ld d,a			;5c7b
 	call suma_puntos		;5c7c
-	ld a,001h		;5c7f
+	ld a,001h		;5c7f   ; y el sonido del acierto
 	call L_7BA2		;5c81
 	ret			;5c84
 L_5C85:

@@ -1833,3 +1833,294 @@ C 0x57bc con acarreo a la pagina
 C 0x57c0 las columnas, aparte
 C 0x57c4 y se vuelven a juntar
 C 0x57c7 con el puntero ya recolocado
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x57cb mueve_los_seis_recogibles
+B 0x57cb EL BUCLE DE LOS SEIS RECOGIBLES: cada uno tiene su estado en 0xE180, su posicion en 0xE170 y su hueco de sprite en 0xE0FC. Si el estado no es cero se mueve, y si lo es se intenta arrancar.
+C 0x57cb el estado de cada uno
+C 0x57cf su hueco de sprite
+C 0x57d2 y su posicion
+C 0x57d5 seis
+C 0x57dc parado?
+C 0x57de en marcha: se mueve
+C 0x57e2 parado: se mira si le toca salir
+C 0x57e7 dos bytes de posicion
+C 0x57e9 y dos de estado
+L 0x57ef el_septimo_de_la_fase_3
+B 0x57ef EL SEPTIMO, que solo existe en las fases de tipo 3. Su dibujo es de 3x3 y su patron cambia con el contador de cuadros -uno de cada dos, `rra / and 007h / add a,094h`- pero SOLO si el jugador esta pulsando algo: parado, se queda quieto.
+C 0x57ef el tipo de fase
+C 0x57f2 solo la 3 lo tiene
+C 0x57fd el valor 0x7E lo trata aparte
+C 0x5801 el bit 2 y 3 de (0xE139)
+L 0x5808 pinta_el_septimo
+C 0x580a la fila y el patron
+C 0x5813 tres por tres
+C 0x5816 su dibujo
+C 0x581f el sprite que lleva encima
+C 0x5825 se esta pulsando algo?
+C 0x582a el contador de cuadros
+C 0x582d uno de cada dos
+C 0x5830 y de ahi el patron, de 0x94 en adelante
+L 0x583e coloca_el_septimo
+C 0x583e su posicion, apuntada
+C 0x5844 catorce por tres
+C 0x584e donde cae en el decorado
+L 0x5855 mueve_un_recogible
+B 0x5855 MOVER UNO DE LOS SEIS, con el mismo paso y medio que los moviles: el sentido del jugador mas el bit 0 del contador de cuadros convertido en 0 o -1. La fase de tipo 2 tiene su propia rutina.
+C 0x5855 el tipo de fase
+C 0x585a la fase 2 va por otro lado
+C 0x585c el sentido que pulsa el jugador
+C 0x5860 el contador de cuadros
+C 0x5864 su bit 0
+C 0x5865 como 0 o -1
+C 0x5867 y sumado a la posicion
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x586d se marca en la fila de al lado
+L 0x5870 pinta_un_recogible
+B 0x5870 PINTAR UN RECOGIBLE. Por encima de 0x85 -o sea por debajo en la pantalla- se libera su sprite y se pinta la version quieta (0x72D2); por debajo lleva sprite y el dibujo elegido de la tabla de 0x7242.
+C 0x5871 la posicion del jugador
+C 0x5874 el umbral
+C 0x5879 sus patrones
+C 0x5881 la tabla de cuatro dibujos
+C 0x5884 tres por cinco
+C 0x588c ya no lleva sprite
+C 0x5893 y se pinta quieto
+L 0x589e apaga_el_recogible
+C 0x58a0 cinco por tres
+C 0x58aa mira si quedan mas
+C 0x58ad si el reparto no cuadra, se deja
+C 0x58b1 y si no, se apaga del todo
+L 0x58b8 suma_los_estados
+B 0x58b8 SUMAR LOS CINCO ESTADOS de los recogibles y quedarse con el nibble bajo: es la cuenta rapida de cuantos quedan sin recoger, sin un contador aparte que pueda descuadrarse.
+C 0x58bb cinco
+C 0x58c0 sumando de dos en dos bytes
+C 0x58c3 y el nibble bajo es la cuenta
+L 0x58c6 mueve_el_recogible_de_la_fase_2
+B 0x58c6 EL RECOGIBLE DE LA FASE 2, que se mueve solo. Si el suelto de 0xE1B0 esta a 0xFE no hay referencia; si no, se mide contra el con una ventana de 0x40 -veinte pixeles a cada lado-. Y cuando no hay nada pulsado, baja uno cada cuatro cuadros.
+C 0x58ca el suelto
+C 0x58cd 0xFE: no hay referencia
+C 0x58d4 centrado
+C 0x58d6 sesenta y cuatro de ventana
+C 0x58da se esta pulsando algo?
+C 0x58e3 el contador de cuadros
+C 0x58e6 uno de cada cuatro
+C 0x58ea y entonces baja uno
+C 0x58ed la fila fija
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x58f6 tres bits de la posicion
+C 0x58f8 por cuatro: cada pieza son cuatro bytes
+C 0x58fa las dieciseis piezas de tres tiles
+C 0x5900 dos por cuatro
+L 0x5906 lo_deja_quieto
+C 0x5908 tres por dos
+L 0x590d baja_uno_de_cada_dos
+C 0x590d el contador de cuadros
+C 0x5910 uno de cada dos
+L 0x5918 mueve_el_suelto
+B 0x5918 EL SUELTO DE LA FASE 2. Mientras (0xE1BA) no sea cero se limita a descontar; cuando llega, decide entre arrancar de nuevo -poniendo la rampa de 0x59FA y la marca 0xFE- o seguir moviendose. El 0xFE es lo que las cajas de contacto leen como "aqui no hay nada".
+C 0x5918 su plazo
+C 0x591c todavia corre
+C 0x591f el suelto
+C 0x5923 por debajo de dos, se reinicia
+C 0x5927 y 0xFF tambien
+C 0x592b el plazo largo
+C 0x5934 la rampa de catorce valores
+C 0x5937 apuntada
+C 0x593a y la marca de "no hay nada"
+C 0x593e la fila fija
+C 0x5947 aqui se mueve de verdad
+C 0x5948 esta bloqueado?
+C 0x594e se esta pulsando algo?
+C 0x5953 el bit 3: hacia un lado
+C 0x5957 dos de golpe
+C 0x595c los bits 1 y 2 eligen el dibujo
+C 0x5964 uno
+C 0x5968 otro
+C 0x596c y el tercero
+L 0x5971 mira_los_seis_contra_el_suelto
+B 0x5971 EL SUELTO CONTRA LOS SEIS RECOGIBLES, con veinticuatro pixeles de margen. Es lo que decide si choca con alguno de ellos.
+C 0x5977 seis
+C 0x597c los que estan por debajo de dos no cuentan
+C 0x5984 veinticuatro de desplazamiento
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x5987 dos pixeles de margen
+C 0x598b dos bytes por recogible
+L 0x5990 bloquea_el_suelto
+C 0x5992 el plazo de bloqueo
+C 0x5996 y la marca de bloqueado
+L 0x599a baja_uno_de_cada_dos_cuadros
+C 0x599a el contador de cuadros
+C 0x599d uno de cada dos
+L 0x59a4 recorre_la_rampa_del_suelto
+B 0x59a4 EL SUELTO BLOQUEADO RECORRE SU RAMPA. (0xE1B5) dice en que sentido -y con el bit 0 se decide si el valor de la rampa se suma o se RESTA, con `neg`-, y la rampa se recorre hacia delante o hacia atras. Los valores 0xFE y 0xFF son los topes; al llegar al 0xFF se da la vuelta y al 0xFE se desbloquea.
+C 0x59a4 el sentido
+C 0x59a9 por donde va la rampa
+C 0x59ad el bit 0 decide el signo
+C 0x59b2 restar en vez de sumar
+C 0x59b5 y se aplica
+C 0x59b7 dos hacia abajo
+C 0x59be la rampa avanza
+C 0x59c1 o retrocede
+C 0x59c3 0xFF: el tope
+C 0x59c8 se da la vuelta al sentido
+L 0x59ce mete_el_suelto_en_los_sprites
+B 0x59ce METER EL SUELTO EN EL BUFER DE SPRITES. Si su posicion es 0xFE -la marca de "no hay nada"- se le pone la fila 0xC3, que lo saca de la pantalla: el mismo valor que usa el juego para liberar cualquier hueco.
+C 0x59d4 la marca de "no hay nada"
+C 0x59d9 y entonces, fuera de la pantalla
+C 0x59e2 el patron, de 0x84 en adelante
+C 0x59e4 fila, columna, patron y color
+L 0x59ec desbloquea_el_suelto
+C 0x59ec 0xFE: el otro tope de la rampa
+C 0x59f0 se desbloquea
+L 0x5a08 mira_los_seis_contra_el_jugador
+C 0x5a08 seis
+C 0x5a0a sus posiciones
+C 0x5a0d y la del jugador, las dos coordenadas de un tiron
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x5a10 el estado del jugador
+C 0x5a14 solo se comprueba corriendo
+C 0x5a18 el siguiente
+C 0x5a1b y al final, el suelto
+L 0x5a1e caja_contra_el_jugador
+B 0x5a1e LA CAJA CONTRA EL JUGADOR: 0x1C por 0x28, centrada con `add a,00eh` y `add a,010h` -o sea, catorce y dieciseis a cada lado-. Devuelve el acarreo puesto si toca, que es lo que corta el bucle de arriba.
+C 0x5a21 catorce, o sea centrada
+C 0x5a23 veintiocho de ancho
+C 0x5a28 dieciseis
+C 0x5a2a y cuarenta en la otra
+C 0x5a2d acarreo: hay contacto
+L 0x5aaf saca_la_siguiente_de_la_cola
+B 0x5aaf LA COLA DE COSAS QUE VAN SALIENDO. (0xE26E) es lo que falta para la siguiente y se descuenta cada cuadro; cuando pasa de cero, se busca un hueco libre entre CUATRO y se rellena leyendo cuatro bytes del guion. Al llegar a un 0xFF, el guion vuelve al principio con el puntero guardado en (0xE25A).
+C 0x5aaf el numero de fase
+C 0x5ab3 en el titulo no hay cola
+C 0x5ab4 lo que falta para la siguiente
+C 0x5ab8 se descuenta
+C 0x5aba todavia no toca
+C 0x5abe cuatro huecos
+C 0x5ac2 libre
+C 0x5ac4 cuatro bytes por hueco
+C 0x5acb por donde va el guion
+C 0x5ad0 dos bits del primer byte
+C 0x5ad5 uno mas
+C 0x5ad7 y de ahi la fila, de 0x3A en adelante
+C 0x5ad9 sumando 0x1E por cada paso
+C 0x5ae2 el patron
+C 0x5aea lo que falta para la siguiente
+C 0x5aee y el guion queda apuntado
+C 0x5af6 0xFF: fin del guion
+C 0x5af9 y vuelve al principio
+L 0x5b00 mueve_lo_que_se_empuja
+C 0x5b00 lo que se esta pulsando
+C 0x5b05 el bit 2: hacia donde
+C 0x5b0c uno menos
+C 0x5b0d el tope
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x5b11 el tope por abajo
+L 0x5b16 avanza_con_la_velocidad
+B 0x5b16 EL AVANCE CON VELOCIDAD ACUMULADA. (0xE270) es la velocidad y (0xE271) el resto: se suman, se guardan los seis bits de abajo del resto, y los dos que se desbordan (`add hl,hl` dos veces y quedarse con H) son los pixeles que se mueve todo este cuadro. Es un acumulador de punto fijo hecho con dos bytes y ninguna division.
+C 0x5b16 la velocidad
+C 0x5b1b mas el resto que quedaba
+C 0x5b1f y el resto nuevo, seis bits
+C 0x5b23 dos veces por dos
+C 0x5b25 y lo que se desborda son los pixeles
+C 0x5b29 el decorado se corre
+C 0x5b2d se repinta la figura grande
+C 0x5b31 el numero de fase
+C 0x5b35 en el titulo no hay segunda capa
+C 0x5b3b la otra referencia tambien se corre
+C 0x5b49 al reves para el desplazamiento del decorado
+C 0x5b4c y con el byte alto a 0xFF: negativo
+L 0x5b52 corre_la_cola_con_la_velocidad
+C 0x5b52 los cuatro huecos de la cola
+C 0x5b5a vacio
+C 0x5b60 se corre lo que toque
+C 0x5b62 al llegar a tres
+C 0x5b67 se apaga
+C 0x5b6c cuatro bytes por hueco
+L 0x5b73 acelera
+C 0x5b73 uno mas
+C 0x5b74 el tope por arriba
+C 0x5b78 y se clava ahi
+L 0x5b7c pinta_la_cola
+C 0x5b7c los cuatro huecos
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x5b89 la posicion del hueco
+C 0x5b8f convertida en celda
+C 0x5b95 tres bits de la columna
+C 0x5b98 por cinco: cinco bytes de indices por variante
+C 0x5b9c la tabla de veinte indices
+C 0x5ba3 la fila de arriba
+C 0x5ba7 quince mas para la de abajo
+C 0x5bad y la fila siguiente, 32 celdas
+L 0x5bbe pinta_dos_o_tres_celdas
+B 0x5bbe PINTAR LA FILA DE UNA PIEZA DE LA COLA, de dos o tres celdas segun el ancho que traiga B. Al indice de la tabla se le SUMA C, que es el desplazamiento de patrones de esa pieza: la misma tabla de veinte valores sirve para todas las piezas cambiando ese sumando.
+C 0x5bbf el desplazamiento de patrones
+C 0x5bc1 dos celdas
+C 0x5bcc el indice, corrido por el desplazamiento
+C 0x5bd5 un uno en la tabla marca que no hay hueco
+C 0x5bd8 y entonces se retrocede una celda
+L 0x5be5 pinta_una_celda
+C 0x5be8 cero: no hay nada que pintar
+C 0x5bed el indice corrido
+L 0x5bf3 apaga_un_hueco_de_la_cola
+C 0x5bf3 el tipo de pieza
+C 0x5bf4 el hueco queda libre
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x5bfc la posicion, en celda
+C 0x5bff los diez ceros: borra por donde paso
+C 0x5c0f quince mas: la fila de abajo
+L 0x5c1e mira_la_cola_contra_el_jugador
+B 0x5c1e LA COLA CONTRA EL JUGADOR. Solo se mira en los estados por debajo de 5, y la ventana no es fija: el alto sale del propio tipo de pieza (`add a,a` tres veces mas ocho), o sea que una pieza mas alta se toca antes.
+C 0x5c1e el estado del jugador
+C 0x5c21 de 5 en adelante, ya no
+C 0x5c27 los cuatro huecos
+C 0x5c2c vacio
+C 0x5c2f la posicion del jugador
+C 0x5c37 dieciseis de margen
+C 0x5c3b el tipo de pieza
+C 0x5c3c por ocho
+C 0x5c3f mas ocho: el alto de la caja
+C 0x5c48 veintiocho en la otra
+C 0x5c4a treinta y seis de ventana
+C 0x5c4e si cae en los cuatro de arriba, se ha saltado por encima
+C 0x5c55 y si no, se choca
+L 0x5c59 lo_ha_saltado
+B 0x5c59 SALTAR POR ENCIMA DE UNA PIEZA, y aqui esta el premio por ENCADENAR: (0xE272) cuenta los saltos seguidos, sube hasta un tope de CUATRO, y lo que se cobra es ese contador por 512. O sea 512, 1024, 1536 y 2048 puntos: saltar seguido vale el cuadruple.
+C 0x5c5a seis pixeles de holgura
+C 0x5c60 la rampa del salto
+C 0x5c68 estado 1: en el aire
+C 0x5c6b los saltos encadenados
+C 0x5c6e uno mas
+C 0x5c6f el tope son cuatro
+C 0x5c7a por dos, en el byte alto: 512 por cada uno
+C 0x5c7f y el sonido del acierto
