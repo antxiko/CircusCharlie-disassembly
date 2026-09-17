@@ -28,7 +28,7 @@ F 0x40c7 w
 # Las otras cuatro tablas del mismo despachador, medidas igual.
 D 0x4c93 0x4c9d tabla_4C93  5 entradas, desde el call de 0x4C90; cierra en 0x4C9D, que es su entrada mas baja
 F 0x4c93 w
-D 0x4cea 0x4cf4 tabla_4CEA  5 entradas, desde el call de 0x4CE7; no cierra sola -su entrada mas baja cae por detras-, cinco es el techo del encaje y el presupuesto no deja hueco detras
+D 0x4cea 0x4cfe tabla_4CEA  10 entradas, desde el call de 0x4CE7; dos de ellas son 0x0000 -huecos del reparto- y por eso el encaje crudo se paraba en cinco. Con diez cierra en 0x4CFE, su entrada mas baja no nula, y ademas explica 0x502D y 0x5000, que ninguna otra instruccion alcanza
 F 0x4cea w
 D 0x5fef 0x5ff9 tabla_5FEF  5 entradas, desde el call de 0x5FEC; cierra en 0x5FF9
 F 0x5fef w
@@ -162,3 +162,246 @@ D 0x788c 0x797e poses_guiones_3
 D 0x797e 0x7994 poses_tabla_4  11 punteros; la usan 0x5E3E y 0x5E6E
 F 0x797e w
 D 0x7994 0x79fa poses_guiones_4
+
+# ======================================================================
+# LOS RECTANGULOS DE TILES
+# ======================================================================
+# L_53C8 pinta un rectangulo de B filas por C columnas de indices de patron en
+# la tabla de nombres, leyendo de HL de corrido. Y L_53BE es su puerta con
+# tabla: entra con HL apuntando a CUATRO punteros, elige uno con
+# `ld a,e / and 006h` -o sea por la columna del destino, cuatro variantes- y
+# cae en L_53C8.
+#
+# El tamano de cada rectangulo no se estima: lo dice el BC de la llamada. Y el
+# encaje lo confirma por otro camino, porque los rectangulos van seguidos:
+#
+#   0x71B1 (bc=0x0204, 2x4=8)   punteros 0x71D1 0x71C9 0x71C1 0x71B9, o sea
+#                               los cuatro de ocho en ocho AL REVES, y el
+#                               ultimo acaba en 0x71D9, donde sigue el codigo
+#   0x7242 (bc=0x0305, 3x5=15)  punteros 0x7262 0x7253 0x7280 0x7271, los
+#                               cuatro de quince en quince, y el ultimo acaba
+#                               en 0x728F, donde empieza el bloque comprimido
+D 0x71b1 0x71b9 rectangulos_tabla_71B1  4 punteros; la usa 0x53B8 con bc=0x0204
+F 0x71b1 w
+D 0x71b9 0x71d9 rectangulos_71B9  cuatro rectangulos de 2x4 tiles, 8 bytes cada uno
+F 0x71b9 4
+D 0x7242 0x724a rectangulos_tabla_7242  4 punteros; la usa 0x5887 con bc=0x0305
+F 0x7242 w
+D 0x724a 0x7253 rectangulo_724A  3x3 tiles; lo pinta 0x5819 llamando a L_53C8 directamente
+F 0x724a 3
+D 0x7253 0x728f rectangulos_7253  cuatro rectangulos de 3x5 tiles, 15 bytes cada uno
+F 0x7253 5
+D 0x72d2 0x72e1 rectangulo_72D2  3x5 tiles; lo pinta 0x5899
+F 0x72d2 5
+
+# Las otras dos tablas de rectangulos, con el mismo encaje: los cuatro van
+# seguidos y el ultimo acaba justo donde sigue el codigo.
+D 0x735a 0x7362 rectangulos_tabla_735A  4 punteros; la usan 0x5660 y 0x5F39 con bc=0x0307
+F 0x735a w
+D 0x7362 0x73b6 rectangulos_7362  cuatro rectangulos de 3x7 tiles, 21 bytes cada uno
+F 0x7362 7
+D 0x740f 0x7417 rectangulos_tabla_740F  4 punteros; la usa 0x5658 con bc=0x0308
+F 0x740f w
+D 0x7417 0x7477 rectangulos_7417  cuatro rectangulos de 3x8 tiles, 24 bytes cada uno
+F 0x7417 8
+
+# La continuacion del bloque de 0x7596: 0x753E lo descomprime con `call
+# L_45C9` y 0x7541 vuelve a llamar, ahora a `L_45D1`, SIN tocar HL. O sea que
+# lo que sigue en 0x7658 es el segundo bloque, con el destino de VRAM que
+# quedo puesto.
+D 0x7658 0x76ec bloque_7658  148 bytes -> 192 en VRAM; es la segunda mitad de lo que descomprime 0x753B
+
+# ======================================================================
+# EL SONIDO
+# ======================================================================
+# 0x7B77 lee la nota de una tabla de DOCE valores y la baja de octava con
+# `add hl,hl` repetido, antes de escribirla en el PSG con WRTPSG. O sea que es
+# la escala cromatica: doce periodos, y las octavas salen doblando.
+#
+#   6A 64 5F 59 54 50 4B 47 43 3F 3C 38
+#
+# De 0x6A a 0x38 hay justo una octava (106 / 56 = 1,89, y el doble seria 2),
+# que es lo que confirma que son las doce notas y no otra cosa.
+D 0x7b96 0x7ba2 escala_cromatica  los doce periodos del PSG; 0x7B77 los baja de octava con `add hl,hl`
+F 0x7b96 12
+
+# El repertorio de sonidos. 0x7BEE hace `and 03fh / add a,a / ld de,L_7C19 /
+# call L_4027`: el numero de sonido indexa esta tabla.
+#
+# El encaje que fija la cuenta: la entrada mas baja de la tabla es 0x7C47, que
+# es justo donde la tabla acaba. 0x7C19 + 23*2 = 0x7C47.
+D 0x7c19 0x7c47 tabla_de_sonidos  23 punteros indexados por el numero de sonido; la primera apunta a RAM (0xC9F1) y tres repiten 0x7D91
+F 0x7c19 w
+D 0x7c47 0x7ff4 partituras  los 22 sonidos a los que apunta la tabla, de 0x7C47 a 0x7FE7
+D 0x7ff4 0x8000 relleno_final  12 bytes de 0xFF hasta el final del cartucho
+F 0x7ff4 12
+
+# ======================================================================
+# LAS LISTAS DE PATRON REPETIDO
+# ======================================================================
+# L_462F es una maquina de dos lineas que explica cuatro huecos de golpe:
+#
+#     L_462F  ld a,(hl) / inc hl / or a / ret z      0x00 -> fin
+#             ld b,a
+#     L_4634  push bc / ld bc,00008h / call L_457B   escribe 8 bytes en VRAM
+#             ld bc,0fff8h / add hl,bc               y RETROCEDE ocho: repite
+#             pop bc / djnz L_4634                   el MISMO patron
+#             ld c,008h / add hl,bc                  ahora si, el siguiente
+#             jr L_462F
+#
+# O sea `[N][ocho bytes]` = escribe ese patron N veces seguidas. Es como se
+# llena de suelo o de cielo media pantalla con nueve bytes.
+#
+# Y el detalle que las ata a lo de arriba: quien las lee NO carga su
+# direccion. 0x7149 monta la escena de 0x7155 con `call L_6A42`, que al acabar
+# deja HL en 0x719E, y el `jp L_462C` de 0x7152 sigue leyendo desde ahi. Por
+# eso las cuatro empiezan justo donde acaba una escena y acaban justo donde
+# empieza su tabla de rectangulos.
+D 0x719e 0x71b1 patrones_repetidos_719E  2 patrones, 14 veces cada uno; sigue a la escena de 0x7155
+F 0x719e 9
+D 0x722f 0x7242 patrones_repetidos_722F  2 patrones, 31 y 10 veces
+F 0x722f 9
+D 0x7335 0x735a patrones_repetidos_7335  4 patrones: 11, 5, 15 y 14 veces
+F 0x7335 9
+D 0x73f3 0x740f patrones_repetidos_73F3  3 patrones: 8, 7 y 7 veces
+F 0x73f3 9
+D 0x6fa5 0x6fc1 patrones_repetidos_6FA5  3 patrones: 15, 3 y 2 veces; sigue a la escena de 0x6DC1
+F 0x6fa5 9
+D 0x6fc1 0x6fe6 patrones_repetidos_6FC1  4 patrones: 3, 5, 5 y 7 veces. 0x6DA6 lo pasa por L_6DB5, que llama CUATRO veces con el mismo HL
+F 0x6fc1 9
+D 0x74de 0x7527 patrones_repetidos_74DE  8 patrones, 15 veces cada uno; sigue a la escena de 0x7498
+F 0x74de 9
+
+# ======================================================================
+# LAS TABLAS PEQUENAS
+# ======================================================================
+# El guion de GAME OVER no termina: acaba en 0xFE, que es "otro destino de
+# VRAM", y el destino que viene detras es el del rotulo PLAYER 1. O sea que
+# son un solo guion, y 0x41AC entra por la mitad para pintar solo el segundo.
+D 0x4a3b 0x4a48 guion_game_over  "GAME  OVER" en 0x396B, y acaba en 0xFE: sigue en el guion de PLAYER 1. Lo pinta 0x4274
+
+# Nueve bytes que 0x413B y 0x439B copian con `ldir` a 0xE050, y de los que
+# 0x4283 copia solo los seis ultimos a 0xE053.
+D 0x43b4 0x43bd valores_iniciales  9 bytes a 0xE050; 0x4283 copia los seis de 0x43B7 en adelante
+F 0x43b4 9
+
+# 0x47AC los indexa con (0xE042) y mete el resultado en (0xE002).
+D 0x47da 0x47de tabla_47DA  4 valores: 40 60 50 70
+F 0x47da 4
+
+# Dos curvas de diez y una lista de siete. Las dos curvas son simetricas y
+# suben y bajan -31 37 48 65 78 82 78 65 48 37 y 26 31 39 52 62 66 62 52 39
+# 31-, que es la forma de un salto. 0x4F6C elige entre las dos por el bit 1 de
+# (0xE1E0) y 0x4F76 indexa con `and 00fh`.
+D 0x521d 0x5227 curva_de_salto_1  diez alturas, simetrica
+F 0x521d 10
+D 0x5227 0x5231 curva_de_salto_2  diez alturas, la otra variante
+F 0x5227 10
+D 0x5231 0x5238 tabla_5231  7 valores; la usa 0x4FED
+F 0x5231 7
+
+# Tres grupos de siete, uno por cada llamada: 0x60C0 usa el de 0x6196, 0x609C
+# el de 0x619D y 0x6142 el de 0x61A4. Los tres van a L_61AB.
+D 0x6196 0x61ab tres_grupos_de_siete  0x6196, 0x619D y 0x61A4, siete bytes cada uno
+F 0x6196 7
+
+# Una rampa que baja de 4 a 0, entre un 0xFE y un 0xFF. 0x5934 y 0x6100
+# guardan 0x59FA -o sea el byte de DESPUES del 0xFE- en (0xE1B6).
+D 0x59f9 0x5a08 rampa_59FA  FE, luego 4 4 4 3 3 2 2 2 2 1 1 0 0, y FF de cierre
+F 0x59f9 15
+
+# Diez ceros que 0x5BFF recorre.
+D 0x5c14 0x5c1e diez_ceros  los recorre 0x5BFF
+F 0x5c14 10
+
+# ======================================================================
+# LAS TABLAS DE LA PARTIDA
+# ======================================================================
+# Los limites de estas los fija el propio codigo: cada una empieza en una
+# direccion que alguna instruccion carga, y acaba donde empieza la siguiente
+# que se carga. Donde hay una sola carga, lo dice la forma del contenido.
+
+# Tres tablas que 0x50AA, 0x509F y 0x50E2 indexan con `call L_4027` (DE += A).
+D 0x5116 0x513d tabla_5116  39 bytes; la indexa 0x50AA
+D 0x513d 0x5155 tabla_513D  24 bytes; la indexa 0x509F
+D 0x5155 0x5161 tabla_5155  12 bytes; la indexa 0x50E2
+F 0x5155 12
+
+# 32 pares (bandera, altura). El primer byte solo vale 0x0F o 0x8F -el bit 7
+# es lo que cambia- y el segundo va de 0x50 a 0xD0.
+D 0x54c5 0x5505 pares_54C5  32 pares; los lee 0x54A0
+F 0x54c5 2
+D 0x5a6f 0x5aaf pares_5A6F  otros 32 pares del mismo formato; los lee 0x54A7
+F 0x5a6f 2
+
+# Dieciseis piezas de tres tiles con un 0 de relleno: b0 b1 b2 00 / b3 b4 b5
+# 00 / ... Las indexa 0x58FA con `call L_4022` antes de `jp L_5899`, que pinta
+# rectangulos con L_53C8.
+D 0x5a2f 0x5a6f piezas_de_tres_tiles  16 grupos de cuatro: tres indices de patron y un cero
+F 0x5a2f 4
+
+# Veintiocho tríos cerrados por un 0xFF. 0x6148 guarda la direccion en
+# (0xE26C) y en (0xE25A), o sea que la recorren dos punteros a la vez.
+D 0x5c8e 0x5ce3 trios_5C8E  28 grupos de tres, y 0xFF de cierre
+F 0x5c8e 3
+
+# Trece sprites: (Y, X, patron, color). Los cuatro primeros son los que 0x606C
+# copia con `ld bc,00010h / ldir`, o sea diecisiete... dieciseis bytes justos.
+D 0x6d63 0x6d97 sprites_6D63  13 grupos de (Y, X, patron, color); 0x606C copia los cuatro primeros con ldir
+F 0x6d63 4
+
+# Veinte indices que 0x5B9C recorre con `call L_4022` antes de L_5BBE.
+D 0x7527 0x753b indices_7527  20 valores pequenos
+F 0x7527 10
+
+# Dos rampas de caida, cada una entre un 0xFE y un 0xFF. Los siete sitios que
+# cargan una direccion de aqui entran a distinta altura de la MISMA rampa, que
+# es por lo que hay tantos lectores para tan pocos bytes.
+D 0x51b9 0x51e8 rampa_de_caida_1  FE, 5 4 5 4 4 3 ... 0 0, y FF
+F 0x51b9 16
+D 0x51e8 0x5200 rampa_de_caida_2  FE, 3 3 3 2 ... 0 0, y FF
+F 0x51e8 16
+
+# El reparto de 0x5F61: seis tablas, y los limites los da el propio codigo,
+# porque cada una empieza en una direccion que alguien carga.
+D 0x5f61 0x5f67 rampa_5F61  6 valores: 14 12 10 8 6 4
+F 0x5f61 6
+D 0x5f67 0x5f71 curva_5F67  FE y nueve alturas simetricas
+F 0x5f67 10
+D 0x5f71 0x5f7b curva_5F71  FF y nueve alturas simetricas
+F 0x5f71 10
+D 0x5f7b 0x5f85 velocidades_5F7B  diez valores con signo, de +63 a -61 pasando por 0
+F 0x5f7b 10
+D 0x5f85 0x5f8f velocidades_5F85  los mismos diez, mas suaves: de +47 a -46
+F 0x5f85 10
+D 0x5f8f 0x5fcf pares_5F8F  32 pares (bandera, altura), el mismo formato que 0x54C5
+F 0x5f8f 2
+
+# Las dos tablas que 0x6A75 elige con `jr nz`, indexadas con
+# `rra / rra / rra / and 01fh`.
+D 0x6aa7 0x6aa9 cola_6AA7  dos ceros, cola de la tabla de 0x6A9E
+F 0x6aa7 2
+D 0x6aa9 0x6ac1 tabla_6AA9  24 valores; la elige 0x6A75
+F 0x6aa9 8
+
+# 0x696E encadena TRES maquinas sobre el mismo HL, sin volver a cargarlo:
+# `call L_462C` (patrones repetidos), `call L_45D1` (descompresor) y
+# `call L_462F` (mas patrones). Los tres tramos van seguidos y el ultimo acaba
+# clavado en 0x6D63, que es donde 0x606C carga los sprites.
+D 0x6d1a 0x6d48 patrones_repetidos_6D1A  5 patrones: 8, 8, 1, 4 y 21 veces
+F 0x6d1a 9
+D 0x6d48 0x6d59 bloque_6D48  17 bytes -> 632 en VRAM
+D 0x6d59 0x6d63 patrones_repetidos_6D59  1 patron
+F 0x6d59 9
+
+# El reparto de 0x6FE6: la tablita de cuatro que indexa 0x553B y dos listas
+# con marcadores 0xE0..0xE5 de por medio.
+D 0x6fe6 0x6fea tabla_6FE6  4 valores; los indexa 0x553B con `and 006h / rra`
+F 0x6fe6 4
+D 0x6fea 0x7026 lista_6FEA  60 bytes; la recorre 0x552A con bc=0x060A
+D 0x7026 0x7056 lista_7026  48 bytes del mismo formato; la recorre 0x5532 con c=8
+
+# Una lista de pasos con duracion: 0x4181 descuenta (0xE04F) y, cuando llega a
+# cero, coge de la lista el valor siguiente y su nueva duracion, y guarda el
+# puntero en (0xE04D). El primer plazo, 0x5C cuadros, lo pone 0x4136 a mano.
+D 0x414c 0x4165 guion_de_la_atraccion  25 bytes de pasos con su duracion; arranca en 0x4130

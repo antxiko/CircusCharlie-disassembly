@@ -3,3 +3,7 @@
 # La cabecera del cartucho: "AB" y las cuatro direcciones de la ROM, mas los
 # seis bytes reservados.
 0x4000 0x4010
+
+# La tabla de sonidos de 0x7C19. El trazador entra en ella porque 0x7BF1 hace
+# `ld de,L_7C19` y desde ahi indexa, pero son 23 punteros, no codigo.
+0x7C19 0x7C47

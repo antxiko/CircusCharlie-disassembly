@@ -32,9 +32,12 @@
 #   0x40C7 + 17*2 = 0x40E9, y su primera entrada es 0x40E9
 !tabla 0x40c7  17   # el reparto de escenas, desde el `call L_404E` de 0x40C4
 !tabla 0x4c93   5   # desde 0x4C90; cierra en 0x4C9D, que es su entrada mas baja
-!tabla 0x4cea   5   # desde 0x4CE7. NO cierra sola (la entrada mas baja, 0x4CFE, cae
-                    # por detras de 0x4CF4): cinco es el TECHO que deja el encaje, y
-                    # lo confirma el presupuesto, que no deja hueco en 0x4CF4
+!tabla 0x4cea  10   # desde 0x4CE7. Son DIEZ, no cinco: dos de sus entradas son 0x0000
+                    # -huecos del reparto- y por eso el encaje crudo se paraba antes.
+                    # Con diez cierra en 0x4CFE, que es su entrada mas baja no nula, y
+                    # ademas dos de las cinco de mas (0x502D y 0x5000) son justamente
+                    # los dos trozos de codigo que ninguna otra instruccion alcanza:
+                    # sin esta tabla se quedaban sin explicar.
 !tabla 0x5fef   5   # desde 0x5FEC; cierra en 0x5FF9, su entrada mas baja
 !tabla 0x60b6   5   # desde 0x60B3; cierra en 0x60C0, su entrada mas baja
 
@@ -56,3 +59,22 @@
 # 0x5FE5 hace lo mismo antes de su despachador: `ld hl,0699dh / push hl` y cae
 # en el `call L_404E` de 0x5FEC, o sea que la subescena vuelve por 0x699D.
 0x699D   # retorno apilado por 0x5FE5
+
+# ======================================================================
+# LOS DOS TROZOS QUE NO ALCANZA NADIE
+# ======================================================================
+# Siete bytes en total. No son datos: desensamblan a instrucciones coherentes
+# que encajan con el codigo de al lado. Lo que no hay es NINGUNA instruccion
+# del cartucho que los alcance -buscadas las referencias a las dos direcciones
+# en el listado entero, cero-, asi que el trazado no puede llegar por su
+# cuenta. Son codigo que se quedo sin uso.
+
+# `ld (0e03fh),a / jr L_4713`, pegado detras de los ocho registros del VDP y
+# justo antes de L_472F. El `jr` cae dentro de L_4708, la rutina que vuelca
+# esos mismos registros.
+0x472A   # codigo huerfano: nadie lo llama
+
+# `ld a,001h`, la otra puerta de la rutina de 0x5161: alli se entra con
+# `xor a` y un `jr $+4` que salta POR ENCIMA de estos dos bytes, de modo que
+# quien entrase aqui lo haria con A=1. Nadie entra.
+0x5164   # codigo huerfano: la variante con A=1 de L_5161
