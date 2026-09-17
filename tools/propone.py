@@ -15,8 +15,9 @@ Uso: propone.py <rom> <org> <huecos.txt>
 """
 import sys
 
-from rle import descomprime, CON_CABECERA
+from rle import descomprime, descomprime_ram, CON_CABECERA
 from guiones import ejecuta as ejecuta_guion
+from escenas import escena
 
 
 def main():
@@ -37,6 +38,16 @@ def main():
                 total = sum(len(c) for _, c in tramos)
                 d = " ".join(f"0x{x:04X}" for x, _ in tramos if x is not None)
                 propuestas.append(f"{nombre}: cierra CLAVADO, {total} bytes a VRAM ({d})")
+
+        for var in (0x42, 0x33):
+            f, trozos = escena(rom, org, ini, var)
+            if f == fin:
+                propuestas.append(f"escena por 0x6A{var:02X}: cierra CLAVADO, "
+                                  f"{len(trozos)} trozos de {sum(trozos)} bytes")
+
+        f, datos = descomprime_ram(rom, org, ini)
+        if f == fin:
+            propuestas.append(f"un trozo comprimido a RAM: cierra CLAVADO, {len(datos)} bytes")
 
         f, tramos = ejecuta_guion(rom, org, ini)
         if f == fin:

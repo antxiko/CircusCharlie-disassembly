@@ -103,3 +103,62 @@ D 0x6ac6 0x6acb bloque_6AC6  5 bytes -> 32 en la tabla de nombres (0x3860). Lo c
 D 0x7056 0x7149 bloque_7056  243 bytes -> 256 en VRAM. Lo carga 0x6005 con DE=0x2D00
 D 0x728f 0x72d2 bloque_728F  67 bytes -> 96 en VRAM, 2 tramos (0x3580 y 0x1580). Lo carga 0x71E5
 D 0x7596 0x7658 bloque_7596  194 bytes -> 344 en VRAM (0x23A8). Lo carga 0x753B
+
+# Este entra por la tercera puerta, 0x45D1: el destino de VRAM ya esta puesto
+# en DE y el bloque empieza directamente en los datos.
+D 0x4956 0x499f bloque_patrones_4956  73 bytes -> 512 en la tabla de patrones (0x0000)
+
+# ======================================================================
+# LAS ESCENAS
+# ======================================================================
+# Una escena no es un bloque y ya: es un guion que el cartucho recorre con
+# 0x6A42 (o 0x6A33) descomprimiendo trozos al bufer de 0xE280 y volcandolos a
+# la VRAM por MASCARAS de ocho bits, un bit por patron. Lo mide
+# tools/escenas.py ejecutando esa maquina entera; los limites de abajo son los
+# bytes que consume, no una estimacion.
+#
+# La comprobacion de que la maquina esta bien leida: 0x6ACB acaba clavado en
+# 0x6D1A, que es donde arranca el siguiente bloque segun el propio codigo
+# (0x696E lo carga en HL).
+D 0x6ac1 0x6acb bloque_6AC1  10 bytes -> 138 en VRAM. Lo carga 0x69C8, y 0x69CF entra por 0x6AC6 para los 32 ultimos
+D 0x6acb 0x6d1a escena_del_nivel  591 bytes, 14 trozos; la monta 0x56D7, y 0x6968 entra por 0x6BE3 para los 13 ultimos
+D 0x6dc1 0x6fa5 escena_6DC1  484 bytes por la puerta 0x6A33 (la de la pagina fija y el ajuste por fila); la monta 0x6D97
+D 0x7155 0x719e escena_7155  73 bytes, 2 trozos; la monta 0x7149
+D 0x71eb 0x722f escena_71EB  68 bytes, 3 trozos; la monta 0x71D9
+D 0x72ed 0x7335 escena_72ED  72 bytes, 3 trozos; la monta 0x72E1
+D 0x73c2 0x73f3 escena_73C2  49 bytes, 3 trozos; la monta 0x73B6
+D 0x7498 0x74de escena_7498  70 bytes, 2 trozos; la monta 0x7477
+
+# ======================================================================
+# EL PERSONAJE GRANDE: CUATRO REPERTORIOS DE POSES
+# ======================================================================
+# 0x5E74 entra con BC apuntando a una tabla, saca el indice de pose de los
+# cinco bits de abajo (`and 01fh`), y si pasa de 15 lo REFLEJA (`cpl / sub 5 /
+# and 01fh`): las 32 posiciones se dibujan con la mitad de datos. Luego
+# `rlca / call L_4022` indexa la tabla por dos y saca el puntero al guion.
+#
+# El guion lo recorre 0x5E8E, que es un TERCER interprete, distinto del de
+# rotulos: escribe indices de patron en la tabla de nombres avanzando DE, y
+#
+#   0xFF   termina
+#   0xFE   salta a la fila siguiente (suma 0x20 al destino)
+#
+# y ademas avanza o RETROCEDE segun la direccion (`ld a,c / cp 006h`), que es
+# lo que dibuja al personaje mirando al otro lado sin datos aparte.
+#
+# El encaje que fija los limites: cada tabla tiene once punteros -22 bytes- y
+# acaba justo donde empieza el guion al que apunta el primero, y el ultimo
+# guion de cada grupo acaba justo donde empieza la tabla siguiente. Las cuatro
+# cuadran al byte.
+D 0x76ec 0x7702 poses_tabla_1  11 punteros; la usa 0x5E16 con `ld bc,076ech`
+F 0x76ec w
+D 0x7702 0x7806 poses_guiones_1  los guiones a los que apunta; varios punteros entran a media pose, que es como se reaprovechan
+D 0x7806 0x781c poses_tabla_2  11 punteros; la usa 0x5E1D, y 0x561D entra por 0x780E
+F 0x7806 w
+D 0x781c 0x7876 poses_guiones_2
+D 0x7876 0x788c poses_tabla_3  11 punteros; la usan 0x5E37 y 0x5E67
+F 0x7876 w
+D 0x788c 0x797e poses_guiones_3
+D 0x797e 0x7994 poses_tabla_4  11 punteros; la usan 0x5E3E y 0x5E6E
+F 0x797e w
+D 0x7994 0x79fa poses_guiones_4
