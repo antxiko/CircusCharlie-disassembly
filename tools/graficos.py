@@ -390,12 +390,25 @@ def vram_de_la_atraccion(rom, tipo=0):
 
     ESTADO: INCOMPLETO, y aqui esta dicho para que nadie lo publique creyendo
     que es la pantalla. Monta la cadena comun y, del reparto por tipo de fase
-    (la tabla de cinco de 0x5FEF), solo el decorado de la fase 1. FALTA el
-    remate de 0x699D -que el despachador apila antes de saltar- y ahi esta el
-    problema de fondo: `pinta_bloque_en_su_sitio` (0x6A6D) pasa por
-    `posicion_a_celda` y lee (0xE14A), o sea que **el decorado depende del
-    estado del juego en la RAM, no solo de la ROM**. Sin ese estado no hay
-    manera de montar la pantalla entera "desde la ROM" y ya.
+    (la tabla de cinco de 0x5FEF), solo el decorado de la fase 1. Falta el
+    remate de 0x699D, que el despachador apila antes de saltar:
+
+        0x69A1  elige_el_decorado_alterno   0x6AC1 o 0x6AC6
+        0x69B9  pinta_bloque_en_su_sitio    el fondo, fila a fila
+        0x69BF  monta_escena 0x6D0A
+        0x69C5  pinta_la_figura_grande
+
+    NO depende del estado del juego -eso se comprobo y es que no-: los tres
+    parametros son CONSTANTES del propio remate (0x1000/0x1800/0x2013, o
+    0x6800/0x7000/0x200A segun `que_dibujo_toca`), y `posicion_a_celda`
+    (0x53F3) trabaja solo con D y E, sin leer una sola direccion de RAM. O sea
+    que se PUEDE montar desde la ROM; lo que falta es implementar esas dos
+    rutinas, que es trabajo pendiente y no un imposible.
+
+    Y una cosa que hay que leer con cuidado al hacerlo: en el bucle de
+    0x6A91 el `inc hl` esta FUERA del `djnz`, asi que cada fila del bloque se
+    pinta con UN solo patron repetido B veces, y solo al cambiar de fila se
+    coge el siguiente.
 
     Lo que SI esta cerrado es el motor: tools/escenas.py ejecuta ahora la
     maquina de escenas, y lo que la escena del nivel escribe coincide al
