@@ -10,8 +10,20 @@ Los sprites en movimiento y el marcador cambian cada cuadro, asi que la tabla
 de ATRIBUTOS de sprite (0x3B00) no se compara: lo que se compara es el
 decorado, que es lo que graficos.py dice reproducir.
 
+LAS DOS PANTALLAS, Y NO SON LA MISMA. Costo una tanda de imagenes malas
+confundirlas:
+
+    presentacion  la pantalla de LA CASA: el logotipo de KONAMI subiendo y el
+                  rotulo "- VIDEO CARTRIDGE -". Es la escena 2.
+    seleccion     la pantalla de TITULO de verdad, la del menu: "PLAY SELECT",
+                  las cuatro opciones, el "(c) 1984" y el cursor. Es la que
+                  sale despues de que la cortina tape el logotipo.
+
+Las dos comparten decorado -mismos patrones y mismo color, cero bytes de
+diferencia-: lo unico que cambia entre ellas es la tabla de nombres.
+
 Uso: coteja_vram.py <rom> <vram.bin> <escena>
-     escena: logotipo | titulo | nivel | pista
+     escena: presentacion | seleccion | seleccion-sin-cursor
 """
 import os
 import sys
@@ -34,12 +46,17 @@ def main():
     rom = open(sys.argv[1], "rb").read()
     real = open(sys.argv[2], "rb").read()
     escena = sys.argv[3]
-    mio = {
-        "logotipo": graficos.escena_logotipo,
-        "titulo": graficos.escena_titulo,
-        "nivel": graficos.escena_nivel,
-        "pista": graficos.escena_pista,
-    }[escena](rom)
+    monta = {
+        "presentacion": graficos.vram_de_la_presentacion,
+        "seleccion": graficos.vram_de_la_seleccion,
+        "seleccion-sin-cursor":
+            lambda r: graficos.vram_de_la_seleccion(r, cursor=False),
+    }
+    if escena not in monta:
+        print("  escena desconocida: %s (hay %s)"
+              % (escena, ", ".join(sorted(monta))))
+        return 2
+    mio = monta[escena](rom).b
 
     print("  %s contra %s" % (escena, os.path.basename(sys.argv[2])))
     print("  " + "-" * 58)

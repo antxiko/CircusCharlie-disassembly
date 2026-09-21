@@ -212,7 +212,7 @@ L_40F4:
 	ret nc			;40f8
 	call baja_la_cortinilla		;40f9   ; y el resto del parpadeo lo lleva esta
 	ret nz			;40fc
-	ld hl,04a53h		;40fd   ; el rotulo "(r) VIDEO CARTRIDGE (r)"
+	ld hl,04a53h		;40fd   ; el rotulo "- VIDEO CARTRIDGE -"
 	call pinta_rotulo		;4100   ; con la mascara a 0xFF, o sea pintandolo
 	jr L_411B		;4103
 
@@ -958,8 +958,8 @@ L_4531:
 ; ----------------------------------------------------------------------
 donde_va_el_cursor:
 	ld a,(0e042h)		;453e   ; la opcion elegida
-	add a,014h		;4541   ; el desplazamiento hasta la primera fila del menu
-	rrca			;4543   ; dos giros: cada opcion esta a cuatro filas de la anterior
+	add a,014h		;4541   ; el desplazamiento hasta la primera fila del menu: 0x14 da 0x3A05, la columna 5 de la fila 16, justo delante del renglon (que empieza en la 7). Las cuatro opciones caen en las filas 16, 18, 20 y 22, que son las que pinta el guion de 0x49C3
+	rrca			;4543   ; dos giros, y son ROTACIONES: el bit que se sale por abajo sube al 7, y es el que separa una opcion de la siguiente
 	rrca			;4544
 	ld e,a			;4545
 	ld d,07ah		;4546   ; la pagina, fija
@@ -1582,8 +1582,9 @@ DATA_guion_player_1:
 	defb 02ch,039h,030h,02ch,021h,039h,025h,032h,000h,011h,0ffh	; 4a48  ,90,!9%2...
 
 ; ----------------------------------------------------------------------
-; DATOS guion_video_cartridge: 22 bytes: "(r) VIDEO CARTRIDGE (r)" en 0x3966.
-;   Lo pintan 0x40FD y 0x410A
+; DATOS guion_video_cartridge: 22 bytes: "- VIDEO CARTRIDGE -" en 0x3966, con
+;   el tile 0x20 -una raya, no un simbolo- a cada lado. Lo pintan 0x40FD y
+;   0x410A
 ;   0x4a53..0x4a69  (22 bytes)
 DATA_guion_video_cartridge:
 	defb 066h,039h,020h,000h,036h,029h,024h,025h,02fh,000h,023h,021h,032h,034h,032h,029h	; 4a53  f9 .6)$%/.#!242)

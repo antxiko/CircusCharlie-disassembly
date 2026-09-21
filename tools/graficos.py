@@ -28,12 +28,25 @@ asi que los dos de arriba sobran; aqui se enmascaran igual que alli.
 
 LO QUE SALE
 -----------
-    logotipo.png   el KONAMI que baja por la pantalla, patrones 0x41..0x5A
+Las dos primeras son PANTALLAS ENTERAS, y las dos estan cotejadas contra un
+volcado de la VRAM del emulador a CERO bytes de diferencia
+(tools/coteja_vram.py). Las demas son hojas de material, para mirar el
+contenido de las tablas:
+
+    pantalla-presentacion.png  la pantalla de LA CASA: el logotipo de KONAMI y
+                   el rotulo "- VIDEO CARTRIDGE -"
+    pantalla-titulo.png  la pantalla de TITULO: "Circus Charlie", el
+                   "(c) Konami 1984", el "PLAY SELECT" y las cuatro opciones
+                   con su cursor
+    logotipo-konami.png  los 26 dibujos del logotipo de la casa, patrones
+                   0x41..0x5A. OJO: es el logotipo de KONAMI, no el titulo del
+                   juego -son dos cosas distintas y confundirlas ya costo una
+                   tanda de imagenes malas-
     fuente-titulo.png  los 48 dibujos que 0x4347 sube para la pantalla de
                    titulo: la fuente entera, recolocada en el patron 0xC0 del
                    tercer tercio y pintada de 0x70
     tiles.png      la hoja de patrones del fondo, tal como queda en la VRAM
-    fuente.png     los dibujos de texto
+    tiles-tercio3.png  la del tercer tercio
     sprites.png    los patrones de sprite de 0x1800
 
 Uso: graficos.py <rom> <org> <salida>
@@ -166,6 +179,139 @@ def vram_del_titulo(rom):
     return v
 
 
+def pinta_rotulo(v, rom, ini, mascara=0xFF):
+    """El interprete de rotulos de 0x4066, que es el mismo de tools/guiones.py.
+
+    Con la mascara a 0xFF pinta y con 0x00 BORRA, escribiendo ceros sobre la
+    misma geometria: por eso el cartucho no guarda una segunda copia para
+    quitar un rotulo.
+    """
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from guiones import ejecuta
+    fin, tramos = ejecuta(rom, ORG, ini)
+    for destino, cuerpo in tramos:
+        v.situa(destino)
+        for b in cuerpo:
+            v.escribe(b & mascara)
+    return fin
+
+
+def baja_la_cortinilla(v, pasos=0x11):
+    """0x4B6B, y NO es una cortinilla: es el logotipo de KONAMI subiendo.
+
+    Cada pasada escribe tres franjas de patrones CORRELATIVOS -3, 11 y 12
+    celdas desde el 0x41 hasta el 0x5A, que son los veintiseis dibujos del
+    logotipo- y detras borra doce celdas de la fila de abajo, que es el rastro
+    de la pasada anterior. Por eso no hace falta limpiar nada mas.
+
+    Lo llamativo es a donde escribe: al REFLEJO de la cuenta respecto de
+    0x3AAA (`ld hl,03aaah / sbc hl,de`), asi que el logotipo SUBE mientras la
+    cuenta baja. Con los diecisiete pasos de 0x4B49 acaba en 0x388A, que es la
+    fila 4, columna 10. Magical Tree y Comic Bakery hacen lo mismo, celda por
+    celda, y solo cambian el patron por el que empiezan.
+    """
+    for paso in range(1, pasos + 1):
+        de = (0x3AAA - paso * 0x20) & 0x3FFF
+        a = 0x41
+        for n in (3, 11, 12):
+            v.situa(de)
+            for _ in range(n):
+                v.escribe(a)
+                a = (a + 1) & 0xFF
+            de = (de + 0x20) & 0x3FFF
+        v.situa(de)                        # 0x4B8E: el rastro de la anterior
+        for _ in range(12):
+            v.escribe(0x00)
+
+
+def vram_de_la_presentacion(rom):
+    """LA PANTALLA DE LA CASA, entera: la escena 2 del cartucho.
+
+    OJO CON EL NOMBRE, que ya costo una tanda de imagenes malas: esta NO es la
+    pantalla de titulo del juego. Es la de la casa -el logotipo de KONAMI y el
+    rotulo "- VIDEO CARTRIDGE -"-, y la de titulo es otra, con su propio
+    decorado. Lo dice el cartucho: la escena 2 pinta esto y la 4 pinta "PLAY
+    SELECT" y el "(c) 1984".
+
+    Sale de encadenar lo que encadena la escena 0 (0x40E9):
+        0x40EC  monta_la_pantalla_del_titulo  el decorado
+        0x40F9  baja_la_cortinilla            el logotipo, diecisiete pasos
+        0x4100  pinta_rotulo 0x4A53           "- VIDEO CARTRIDGE -"
+    """
+    v = vram_del_titulo(rom)
+    baja_la_cortinilla(v)
+    pinta_rotulo(v, rom, 0x4A53)
+    return v
+
+
+def barre_la_pantalla(v, pasos=0x11):
+    """0x44F7: la cortina que tapa el logotipo, columna a columna.
+
+    La nota del listado dice "tres filas por llamada" y en realidad es una
+    COLUMNA de tres celdas: DE arranca en 0x3888 -fila 4, columna 8- y le suma
+    el numero de pasada, que es la columna; luego baja de fila en fila (`ld
+    a,020h / suma_a_a_de`). La de arriba se deja vacia y las dos de abajo
+    llevan los patrones 0xC0+2n y 0xC1+2n, o sea una pareja distinta por
+    columna. Con diecisiete pasadas cubre las columnas 8 a 24, que es
+    exactamente donde estaba el logotipo.
+    """
+    for paso in range(pasos):
+        de = 0x3888 + paso
+        for valor in (0x00, 0xC0 + paso * 2, 0xC1 + paso * 2):
+            v.situa(de)
+            v.escribe(valor & 0xFF)
+            de += 0x20
+
+
+def donde_va_el_cursor(opcion):
+    """0x453E, y hay que hacerlo con ROTACIONES, no con divisiones.
+
+        ld a,(0e042h) / add a,014h / rrca / rrca / ld e,a / ld d,07ah
+
+    `rrca` ROTA: el bit 0 no se pierde, sube al bit 7. Con la opcion 0 los dos
+    giros de 0x14 dan 0x05 y coincide con dividir por cuatro, pero con la 1
+    -0x15- dan 0x45 y no 0x05: el bit que se sale es el que separa una opcion
+    de la siguiente. De ahi salen 0x3A05, 0x3A45, 0x3A85 y 0x3AC5, o sea la
+    columna 5 de las filas 16, 18, 20 y 22.
+    """
+    a = (0x14 + opcion) & 0xFF
+    for _ in range(2):
+        a = ((a >> 1) | ((a & 1) << 7)) & 0xFF
+    return (0x7A00 | a) & 0x3FFF
+
+
+def vram_de_la_seleccion(rom, cursor=True, opcion=0):
+    """LA PANTALLA DE TITULO DE VERDAD: la del menu, con "PLAY SELECT".
+
+    Es la que el jugador reconoce como titulo, y se llega a ella desde la de
+    la casa sin recargar el decorado: los patrones y el color son los MISMOS
+    -medido: cero bytes de diferencia-, y lo unico que cambia es la tabla de
+    nombres. Tres pasos, en el orden en que los da el cartucho:
+
+        0x410D  borra_rotulo 0x4A53   quita el "VIDEO CARTRIDGE" con su mismo
+                                      guion y la mascara a 0x00
+        0x44F7  barre_la_pantalla     la cortina, diecisiete columnas
+        0x451D  pinta_rotulo 0x49C3   "PLAY SELECT", las cuatro filas del menu
+                                      y el "(c) 1984"
+
+    El cursor (0x4527) es lo unico que no es fijo: son dos celdas, los patrones
+    0x3E y 0x3F, y PARPADEA con el bit 3 del plazo, asi que en la mitad de los
+    cuadros no esta. Donde va lo dice 0x453E: la opcion elegida mas 0x14, dos
+    `rrca` y la pagina 0x7A fija, que para la primera opcion da 0x3A05 -fila
+    16, columna 5-. Cotejado contra dos volcados: con el cursor encendido, 0
+    diferencias; con el apagado, esas dos celdas.
+    """
+    v = vram_de_la_presentacion(rom)
+    pinta_rotulo(v, rom, 0x4A53, mascara=0x00)
+    barre_la_pantalla(v)
+    pinta_rotulo(v, rom, 0x49C3)
+    if cursor:
+        v.situa(donde_va_el_cursor(opcion))
+        v.escribe(0x3E)
+        v.escribe(0x3F)
+    return v
+
+
 def pinta_celda(px, w, x0, y0, patron, color, esc=1):
     for f in range(8):
         p, c = patron[f], color[f]
@@ -220,6 +366,58 @@ def logotipo(v, fn, esc=6):
     png(w, h, px, fn)
 
 
+def vram_con_los_sprites(rom):
+    """0x5FD6: los patrones de sprite, que en las pantallas de menu NO estan.
+
+    Esto arreglaba una imagen que se publicaba ENTERA NEGRA. La hoja de
+    sprites se dibujaba de la VRAM de la pantalla de titulo, y ahi los 2048
+    bytes de 0x1800 estan a cero -medido, y el volcado del emulador dice lo
+    mismo-: el cartucho no los sube hasta que empieza una fase.
+
+    Son dos bloques encadenados, los dos con el destino en la cabecera:
+
+        0x61BA  909 bytes -> 1376 en 0x1800, los dibujos de las figuras
+        0x5FCF  los del marco
+
+    Cotejado contra el volcado de la atraccion del trampolin: 0 de 2048. Las
+    otras cuatro atracciones AÑADEN los suyos encima (por ejemplo 0x6025
+    descomprime 0x6323 sobre 0x1B20), asi que esta hoja es la base comun, no
+    todo lo que llega a haber.
+    """
+    v = Vram()
+    descomprime(v, rom, 0x61BA)                          # 0x5FD9
+    descomprime(v, rom, 0x5FCF)                          # 0x5FDF
+    return v
+
+
+def pantalla_entera(v, fn, esc=2, con_sprites=False):
+    """Los 256x192 puntos, con EL MISMO renderizador que se coteja.
+
+    No se dibuja aqui a mano: se llama a tools/vram.py, que es el que esta
+    medido contra la pantalla de openMSX punto por punto (las cinco
+    atracciones, 49.152 de 49.152). Si el dibujante y el cotejador fueran dos
+    trozos de codigo distintos, el verde del segundo no diria nada del primero.
+
+    Las dos pantallas de menu no llevan NI UN sprite visible -comprobado en los
+    volcados: la lista de 0x3B00 no tiene ninguno con color-, asi que lo
+    dibujado es todo lo que hay.
+    """
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import vram as V
+    px = V.pantalla(v.b, VDP, con_sprites=con_sprites)
+    if esc == 1:
+        png(256, 192, px, fn)
+        return
+    w, h = 256 * esc, 192 * esc
+    g = bytearray(w * h * 3)
+    for y in range(h):
+        fy = y // esc
+        for x in range(w):
+            i, j = (y * w + x) * 3, (fy * 256 + x // esc) * 3
+            g[i:i + 3] = px[j:j + 3]
+    png(w, h, g, fn)
+
+
 def sprites(v, base, fn, n=16, cols=8, esc=3):
     filas = (n + cols - 1) // cols
     w, h = cols * 16 * esc, filas * 16 * esc
@@ -241,12 +439,24 @@ def main():
     sal = sys.argv[3]
     os.makedirs(sal, exist_ok=True)
 
+    # LAS DOS PANTALLAS ENTERAS, que son las unicas imagenes de las que se
+    # puede decir que son lo que el jugador ve: las dos estan cotejadas contra
+    # el volcado de VRAM del emulador a CERO bytes de diferencia
+    # (tools/coteja_vram.py).
+    pantalla_entera(vram_de_la_presentacion(rom),
+                    os.path.join(sal, "pantalla-presentacion.png"))
+    pantalla_entera(vram_de_la_seleccion(rom),
+                    os.path.join(sal, "pantalla-titulo.png"))
+
     v = vram_del_titulo(rom)
-    logotipo(v, os.path.join(sal, "logotipo.png"))
+    logotipo(v, os.path.join(sal, "logotipo-konami.png"))
     hoja(v, 0, os.path.join(sal, "tiles.png"))
     hoja(v, 2, os.path.join(sal, "tiles-tercio3.png"))
     rango(v, 0xC0, 48, os.path.join(sal, "fuente-titulo.png"), tercio=2, cols=16, esc=4)
-    sprites(v, SPRITES, os.path.join(sal, "sprites.png"))
+    # LOS SPRITES van en su propia VRAM: en la pantalla de titulo la tabla de
+    # 0x1800 esta a cero, y dibujarla desde ahi daba una lamina entera NEGRA.
+    sprites(vram_con_los_sprites(rom), SPRITES,
+            os.path.join(sal, "sprites.png"), n=32, cols=8)
 
     for f in sorted(os.listdir(sal)):
         print("  ", os.path.join(sal, f))

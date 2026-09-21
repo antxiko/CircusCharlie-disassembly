@@ -213,6 +213,84 @@ class BloquesComprimidos(unittest.TestCase):
         self.assertEqual(sum(len(c) for _, c in tramos), 512)
 
 
+class LasDosPantallasDeMenu(unittest.TestCase):
+    """Las dos pantallas que graficos.py monta desde la ROM, y que NO son la
+    misma: la de LA CASA (logotipo de KONAMI y "- VIDEO CARTRIDGE -") y la de
+    TITULO (el menu con "PLAY SELECT").
+
+    Contra un volcado del emulador las dos dan CERO bytes de diferencia en las
+    cuatro tablas; eso se comprueba con tools/coteja_vram.py, que necesita el
+    volcado. Lo de aqui es lo que se puede atar sin emulador: donde acaba cada
+    cosa, que es lo que costo averiguar.
+    """
+
+    def monta(self, cual):
+        import graficos
+        graficos.ORG = ORG
+        return getattr(graficos, cual)(lee())
+
+    def celda(self, v, fila, col):
+        return v.b[0x3800 + fila * 32 + col]
+
+    def test_el_logotipo_acaba_en_la_fila_4_columna_10(self):
+        """Diecisiete pasadas y el reflejo respecto de 0x3AAA dejan las tres
+        franjas en 0x388A. Las celdas son patrones CORRELATIVOS del 0x41 al
+        0x5A, en filas de 3, 11 y 12."""
+        v = self.monta("vram_de_la_presentacion")
+        self.assertEqual([self.celda(v, 4, 10 + i) for i in range(3)],
+                         [0x41, 0x42, 0x43])
+        self.assertEqual([self.celda(v, 5, 10 + i) for i in range(11)],
+                         list(range(0x44, 0x4F)))
+        self.assertEqual([self.celda(v, 6, 10 + i) for i in range(12)],
+                         list(range(0x4F, 0x5B)))
+        self.assertEqual(self.celda(v, 7, 10), 0x00,
+                         "la fila de abajo se borra: es el rastro de la pasada"
+                         " anterior")
+
+    def test_el_rotulo_de_la_casa_lleva_una_RAYA_a_cada_lado(self):
+        """No es un (r) ni una arroba: el tile 0x20 de esta fuente es una raya
+        horizontal, y se ve dibujandolo. El rotulo es "- VIDEO CARTRIDGE -"."""
+        v = self.monta("vram_de_la_presentacion")
+        self.assertEqual(self.celda(v, 11, 6), 0x20)
+        self.assertEqual(self.celda(v, 11, 24), 0x20)
+        import graficos
+        patron, _ = graficos.celda(v, 0x20, 1)
+        self.assertEqual(list(patron), [0, 0, 0, 0, 0x7E, 0, 0, 0])
+
+    def test_las_cuatro_opciones_van_de_dos_en_dos_filas(self):
+        """El comentario del listado decia CUATRO filas y son DOS: el guion de
+        0x49C3 las pinta en la 16, la 18, la 20 y la 22."""
+        v = self.monta("vram_de_la_seleccion")
+        for fila in (16, 18, 20, 22):
+            self.assertNotEqual(self.celda(v, fila, 7), 0,
+                                "falta el renglon de la fila %d" % fila)
+
+    def test_el_cursor_sale_de_una_ROTACION_y_no_de_una_division(self):
+        """`add a,014h / rrca / rrca`: con la opcion 0 rotar y dividir dan lo
+        mismo (0x05), pero con la 1 la rotacion da 0x45 y la division 0x05. Si
+        se implementa con un desplazamiento, las cuatro opciones salen en la
+        misma fila."""
+        import graficos
+        self.assertEqual([graficos.donde_va_el_cursor(k) for k in range(4)],
+                         [0x3A05, 0x3A45, 0x3A85, 0x3AC5])
+        v = self.monta("vram_de_la_seleccion")
+        self.assertEqual(self.celda(v, 16, 5), 0x3E)
+        self.assertEqual(self.celda(v, 16, 6), 0x3F)
+
+    def test_en_las_pantallas_de_menu_no_hay_un_solo_sprite(self):
+        """Por eso se dibujan sin sprites, y por eso la hoja de patrones de
+        sprite NO puede salir de aqui: los 2048 bytes de 0x1800 estan a cero.
+        Dibujarla desde esta VRAM daba una lamina entera negra."""
+        v = self.monta("vram_de_la_presentacion")
+        self.assertEqual(set(v.b[0x1800:0x2000]), {0},
+                         "en la pantalla de titulo no hay patrones de sprite")
+
+    def test_los_sprites_salen_de_su_propio_par_de_bloques(self):
+        """0x5FD6 descomprime 0x61BA y 0x5FCF, y ahi si hay dibujos."""
+        v = self.monta("vram_con_los_sprites")
+        self.assertNotEqual(set(v.b[0x1800:0x2000]), {0})
+
+
 class ElVdpPintaCuatroSpritesPorLinea(unittest.TestCase):
     """El tope de sprites del TMS9918, que es lo unico que separaba a
     tools/vram.py de la pantalla de verdad.
