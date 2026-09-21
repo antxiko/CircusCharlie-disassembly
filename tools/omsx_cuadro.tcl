@@ -49,16 +49,25 @@ set ::INSTANTE [opcion PP_INSTANTE 27.5]
 # las capturas salen negras sin que nadie proteste.
 catch { set renderer SDLGL-PP }
 
-# Y HAY QUE APAGARLE LOS EFECTOS DE TELEVISOR, o la foto no es un cuadro: es
-# DOS. Con `blur` a 50 -lo de fabrica- openMSX simula el fosforo mezclando el
-# cuadro anterior, y un punto que se enciende en uno y se apaga en el siguiente
-# sale a media intensidad: el magenta (201,104,178) del monociclo aparece como
-# (101,56,89), que no es ningun color del MSX. Son nueve puntos en una pantalla
-# -el borde de la figura, que se mueve un punto por cuadro- y bastan para que
-# el cotejo no de cero. Lo mismo el `glow` y el `deflicker`.
+# Y HAY QUE APAGARLE LOS EFECTOS DE TELEVISOR, que son DOS y los dos estropean
+# el cotejo. Leidos del propio emulador, no supuestos: `blur` y `glow` ya vienen
+# a 0, asi que los culpables son los otros dos.
+#
+#   deflicker = true   MEZCLA CUADROS: un punto encendido en uno y apagado en
+#                      el siguiente sale a media intensidad. El magenta del
+#                      monociclo de Circus, (201,104,178), aparecia como
+#                      (101,56,89), que no es ningun color del MSX, y bastaban
+#                      nueve puntos para que el cotejo no diera cero.
+#   gamma = 1.1        RETOCA LOS COLORES, y los dos verdes del MSX -el 2 y el
+#                      12- se acercan tanto que se confunden: en Magical Tree
+#                      58 puntos del 12 salian clasificados como 2. Con la
+#                      gamma a 1.0 la foto trae los colores tal cual.
 catch { set blur 0 }
 catch { set glow 0 }
 catch { set deflicker off }
+catch { set gamma 1.0 }
+catch { set brightness 0 }
+catch { set contrast 0 }
 catch { set scale_algorithm simple }
 
 proc vuelca_vram {acto k} {

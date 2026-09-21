@@ -12,10 +12,18 @@ tabla de RGB para los mismos quince colores, y comparando por RGB sale el 100 %
 distinto sin que nada este mal. Ademas el 0 y el 1 se unifican, que en el MSX
 los dos son negro.
 
-Y LA FOTO VA UN CUADRO POR DETRAS de la lectura de la VRAM: eso esta MEDIDO en
-las cinco atracciones (ver tools/omsx_cuadro.tcl, que vuelca la VRAM en una
-rafaga de cuadros alrededor de la foto). Por eso el modo --serie no compara
-contra un volcado sino contra todos los de la rafaga, y dice CUAL casa.
+Y LA FOTO NO ES DEL INSTANTE EN QUE SE LEE LA VRAM: va por detras, casi
+siempre un cuadro. Por eso el modo --serie no compara contra un volcado sino
+contra TODA la rafaga que deja tools/omsx_cuadro.tcl, y lo que exige es que
+ALGUNO la reproduzca punto por punto; cual sea es el desfase, y se informa.
+Cuando la pantalla esta quieta casan varios a la vez, y eso no es una pega.
+
+LO QUE NO SE PUEDE COTEJAR ASI es una pantalla con mucho movimiento: el VDP
+relee la tabla de nombres en CADA linea, asi que si el juego la esta
+reescribiendo mientras el haz baja, el cuadro que sale no corresponde a
+ningun estado completo de la VRAM y no casa con ninguno. Se distingue de un
+fallo del renderizador moviendo el instante de la foto (PP_INSTANTES): si es
+eso, esos puntos cambian de sitio o desaparecen.
 
 Uso:
     coteja_pixels.py <vram.bin> <info.txt> <pant.png>
@@ -29,8 +37,9 @@ import zlib
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import vram as V
 
-# El cuadro con el que casa la foto, medido en las cinco atracciones y en dos
-# instantes distintos: el ANTERIOR al de la lectura de la VRAM.
+# El cuadro con el que suele casar la foto -el ANTERIOR al de la lectura de la
+# VRAM, medido en las cinco atracciones de Circus y en dos instantes distintos-.
+# Se informa, no se exige: con la pantalla quieta casan varios.
 CUADRO_QUE_CASA = -1
 
 
@@ -201,12 +210,16 @@ def una_serie(carpeta):
                 tela_del_volcado(open(nom, "rb").read(), regs), suyo))
             linea.append((k, n))
             suyos[k] = n
-        # Lo que se exige es que case el cuadro medido. Que ademas casen otros
-        # no es una pega: quiere decir que en ese instante no se movia nada.
-        n = suyos.get(CUADRO_QUE_CASA)
-        marca = "OK" if n == 0 else "%s PUNTOS" % n
-        print("  %-8s contra el cuadro %+d: %s"
-              % (acto, CUADRO_QUE_CASA, marca))
+        # LO QUE SE EXIGE es que ALGUN cuadro de la rafaga reproduzca la foto
+        # punto por punto. Eso es lo que prueba que el renderizador es exacto:
+        # que existe un estado de la VRAM que da esa imagen. Cual sea es el
+        # desfase del emulador, y se informa -casi siempre el -1-, pero no se
+        # exige: cuando la pantalla esta quieta casan varios a la vez.
+        casan = [k for k, n in linea if n == 0]
+        n = 0 if casan else min(n for _, n in linea)
+        marca = ("OK (cuadro %s)" % ", ".join("%+d" % k for k in casan)
+                 if casan else "%s PUNTOS" % n)
+        print("  %-8s %s" % (acto, marca))
         if n:
             mal += 1
             print("       %s" % "  ".join("%+d:%d" % t for t in linea))
