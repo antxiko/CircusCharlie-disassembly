@@ -994,6 +994,30 @@ C 0x4762 y otra fila
 # ======================================================================
 C 0x476f la otra fila, recolocada a su sitio
 C 0x4773 las dos teclas de esta fila
+C 0x475e una rotacion
+C 0x475f y se queda con su bit
+C 0x4761 guardado en E
+C 0x4767 pulsado es cero aqui tambien
+C 0x4768 dos rotaciones
+C 0x476a el resto, en B
+C 0x476b la tecla de esta fila
+C 0x476d juntada con la de antes
+C 0x476e en C
+C 0x4770 dos rotaciones mas
+C 0x4772 otra vez en B
+C 0x4775 juntadas
+C 0x4776 en C
+C 0x4777 y lo ultimo
+C 0x4778 una rotacion
+C 0x477b juntadas: las seis teclas caben en un byte
+C 0x4782 guardado
+C 0x4789 los dos juntos
+C 0x478d y el teclado encima: se juega con cualquiera de los tres
+C 0x4791 lo de antes
+C 0x4793 el byte siguiente
+C 0x4795 en B
+C 0x4799 los nuevos, en B
+C 0x479c guardado
 C 0x4779 y las dos que quedan
 L 0x477d atiende_el_menu
 B 0x477d EL MENU DE SELECCION, y es el remate que 0x40AB apila cuando el bit 6 de (0xE002) esta a cero. Junta las TRES entradas -los dos puertos de mando y el teclado- con un `or`, de modo que en el menu vale cualquiera de ellas, y detecta el FLANCO (`xor c / and b`): lo que cuenta es el momento en que se pulsa, no que siga pulsado.
@@ -1808,6 +1832,38 @@ C 0x5767 el ultimo indice leido
 C 0x5768 menos 0xB8
 C 0x576a dos bits: cuatro variantes
 C 0x576d y con 0xE2 delante sale una direccion del bufer de RAM
+C 0x5732 el siguiente
+C 0x5733 al juego alternativo, donde esta el puerto
+C 0x5736 y de vuelta
+C 0x5737 la celda siguiente
+C 0x5738 el byte bajo del destino
+C 0x573e y el resto de la franja
+C 0x5740 seis celdas
+C 0x5742 volcadas
+C 0x5745 dos bytes mas alla
+C 0x5749 una franja menos
+C 0x574a y a por la siguiente
+C 0x574e la pagina de arriba
+C 0x574f sumado
+C 0x5754 una fila menos
+C 0x5757 volcadas
+C 0x575a ocho mas alla
+C 0x575c sumado
+C 0x5763 volcadas
+C 0x5766 el byte de antes
+C 0x576c por dos
+C 0x576f en L
+C 0x5770 y la pagina del bufer
+C 0x5772 el destino en la VRAM
+C 0x5775 ocho celdas
+C 0x577a en los demas tipos no la hay
+C 0x577c se guarda el origen
+C 0x577f volcada
+C 0x5782 se recupera
+C 0x5783 y el otro destino
+C 0x5786 ocho celdas
+C 0x578b se avanza sin cambiar de fila
+C 0x5790 si no lo es, se vuelca tal cual
 C 0x5777 el tipo de fase decide si hay una segunda copia
 C 0x577d la fila de la otra copia
 L 0x578b vuelca_con_referencias
@@ -2042,6 +2098,37 @@ C 0x5b11 el tope por abajo
 L 0x5b16 avanza_con_la_velocidad
 B 0x5b16 EL AVANCE CON VELOCIDAD ACUMULADA. (0xE270) es la velocidad y (0xE271) el resto: se suman, se guardan los seis bits de abajo del resto, y los dos que se desbordan (`add hl,hl` dos veces y quedarse con H) son los pixeles que se mueve todo este cuadro. Es un acumulador de punto fijo hecho con dos bytes y ninguna division.
 C 0x5b16 la velocidad
+C 0x5b19 leida
+C 0x5b1a el byte siguiente
+C 0x5b1c en E
+C 0x5b1d y DE queda con el total
+C 0x5b21 guardado
+C 0x5b22 se cambian
+C 0x5b26 la referencia del decorado
+C 0x5b2b guardada
+C 0x5b2c se guarda el avance
+C 0x5b30 se recupera
+C 0x5b34 la del titulo es la cero
+C 0x5b37 la segunda referencia
+C 0x5b3a leida
+C 0x5b3c guardada
+C 0x5b3d se guarda otra vez
+C 0x5b3e y se pinta la columna que entra
+C 0x5b41 se recupera
+C 0x5b43 el byte alto, a cero
+C 0x5b45 y el avance en el bajo
+C 0x7bfb el byte siguiente
+C 0x7bfc a uno tambien
+C 0x7bfe el siguiente
+C 0x7c00 el siguiente
+C 0x7c02 el byte bajo
+C 0x7c04 y el alto
+C 0x7c06 guardado
+C 0x7c09 sumados al puntero
+C 0x7c0a que asi queda en el sitio
+C 0x7c0d el byte siguiente
+C 0x7c0e lo que se guardo
+C 0x7c12 y se apunta
 C 0x5b1b mas el resto que quedaba
 C 0x5b1f y el resto nuevo, seis bits
 C 0x5b23 dos veces por dos
@@ -2077,6 +2164,29 @@ C 0x5b95 tres bits de la columna
 C 0x5b98 por cinco: cinco bytes de indices por variante
 C 0x5b9c la tabla de veinte indices
 C 0x5ba3 la fila de arriba
+C 0x5b81 se guardan los dos
+C 0x5b83 el estado del hueco
+C 0x5b85 vacio: al siguiente
+C 0x5b87 se guarda
+C 0x5b88 el byte siguiente
+C 0x5b8a el siguiente
+C 0x5b8c la columna, tambien en C
+C 0x5b8d y el ultimo
+C 0x5b92 se guardan
+C 0x5b94 la columna
+C 0x5b97 en C
+C 0x5b98 dos veces por dos
+C 0x5b9a mas ella misma
+C 0x5b9b entre dos: queda el indice
+C 0x5b9f indexada
+C 0x5ba2 se guarda
+C 0x5ba6 la columna
+C 0x5ba9 se guarda
+C 0x5baa se recuperan los tres
+C 0x5baf sumadas al destino
+C 0x5bb2 y se pinta la de abajo
+C 0x5bb5 se recuperan
+C 0x5bbb y a por el siguiente
 C 0x5ba7 quince mas para la de abajo
 C 0x5bad y la fila siguiente, 32 celdas
 L 0x5bbe pinta_dos_o_tres_celdas
@@ -2119,6 +2229,37 @@ L 0x5c59 lo_ha_saltado
 B 0x5c59 SALTAR POR ENCIMA DE UNA PIEZA, y aqui esta el premio por ENCADENAR: (0xE272) cuenta los saltos seguidos, sube hasta un tope de CUATRO, y lo que se cobra es ese contador por 512. O sea 512, 1024, 1536 y 2048 puntos: saltar seguido vale el cuadruple.
 C 0x5c5a seis pixeles de holgura
 C 0x5c60 la rampa del salto
+C 0x5c29 se guardan los dos
+C 0x5c2b el estado de la pieza
+C 0x5c2d al siguiente
+C 0x5c34 dos bytes mas alla
+C 0x5c35 la fila del jugador
+C 0x5c36 menos la de la pieza
+C 0x5c39 en C
+C 0x5c3a el byte siguiente
+C 0x5c41 comparado con la distancia
+C 0x5c42 fuera: no choca
+C 0x5c45 dos atras
+C 0x5c46 la columna del jugador
+C 0x5c47 menos la de la pieza
+C 0x5c4c fuera de la ventana
+C 0x5c52 se recuperan
+C 0x5c54 acarreo: hay choque
+C 0x5c58 y se vuelve
+C 0x5c59 la distancia en fila
+C 0x5c5c por debajo, no lo salto
+C 0x5c5e se recuperan
+C 0x6164 la columna de partida
+C 0x6166 el byte siguiente
+C 0x6167 la fila
+C 0x616a el estado, a cero
+C 0x616d dos mas alla
+C 0x6170 el valor
+C 0x6175 el paso
+C 0x617a la posicion
+C 0x6182 el primero
+C 0x6185 el segundo
+C 0x6188 y el tercero
 C 0x5c68 estado 1: en el aire
 C 0x5c6b los saltos encadenados
 C 0x5c6e uno mas
@@ -2215,6 +2356,35 @@ C 0x5e23 el bit 7: hay segunda figura
 C 0x5e2a por debajo de ocho no se pinta
 C 0x5e37 el repertorio de la segunda
 C 0x5e44 la segunda esta activa?
+C 0x5e47 a cero: no hay segunda
+C 0x5e4c en B
+C 0x5e4d su posicion
+C 0x5e52 guardada
+C 0x5e55 ocho de margen
+C 0x5e57 por debajo, se deja
+C 0x5e58 la referencia del decorado
+C 0x5e5b leida
+C 0x5e5d y si la alcanza, se deja
+C 0x5e5e la posicion
+C 0x5e5f y la fila fija
+C 0x5e61 convertida en celda
+C 0x5e64 el estado otra vez
+C 0x5e67 una pareja de patrones
+C 0x5e6a su bit 1
+C 0x5e6c sin el, la primera
+C 0x5e6e y con el, la otra
+C 0x50b8 mas la fila
+C 0x50b9 guardada
+C 0x50ba y el segundo
+C 0x50c2 la fase 4 va aparte
+C 0x50c6 y las demas se quedan en dos
+C 0x50c8 dieciseis mas abajo
+C 0x50ca guardada
+C 0x50cb la columna
+C 0x50ce guardada
+C 0x50cf el tercero
+C 0x50d2 la columna otra vez
+C 0x50d5 guardada
 C 0x5e49 su paso propio
 C 0x5e50 sumado
 C 0x5e51 si desborda, se deja

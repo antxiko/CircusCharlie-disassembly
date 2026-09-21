@@ -1398,29 +1398,29 @@ lee_el_teclado:
 	ld a,007h		;4758   ; una fila del teclado
 	call 00141h		;475a   ; BIOS SNSMAT - Returns the value of the specified line from the keyboard matrix
 	cpl			;475d   ; pulsado es cero, se invierte
-	rrca			;475e
-	and 020h		;475f
-	ld e,a			;4761
+	rrca			;475e   ; una rotacion
+	and 020h		;475f   ; y se queda con su bit
+	ld e,a			;4761   ; guardado en E
 	ld a,008h		;4762   ; y otra fila
 	call 00141h		;4764   ; BIOS SNSMAT - Returns the value of the specified line from the keyboard matrix
-	cpl			;4767
-	rrca			;4768
+	cpl			;4767   ; pulsado es cero aqui tambien
+	rrca			;4768   ; dos rotaciones
 	rrca			;4769
-	ld b,a			;476a
-	and 004h		;476b
-	or e			;476d
-	ld c,a			;476e
+	ld b,a			;476a   ; el resto, en B
+	and 004h		;476b   ; la tecla de esta fila
+	or e			;476d   ; juntada con la de antes
+	ld c,a			;476e   ; en C
 	ld a,b			;476f   ; la otra fila, recolocada a su sitio
-	rrca			;4770
+	rrca			;4770   ; dos rotaciones mas
 	rrca			;4771
-	ld b,a			;4772
+	ld b,a			;4772   ; otra vez en B
 	and 018h		;4773   ; las dos teclas de esta fila
-	or c			;4775
-	ld c,a			;4776
-	ld a,b			;4777
-	rrca			;4778
+	or c			;4775   ; juntadas
+	ld c,a			;4776   ; en C
+	ld a,b			;4777   ; y lo ultimo
+	rrca			;4778   ; una rotacion
 	and 003h		;4779   ; y las dos que quedan
-	or c			;477b
+	or c			;477b   ; juntadas: las seis teclas caben en un byte
 	ret			;477c
 
 ; ----------------------------------------------------------------------
@@ -1429,25 +1429,25 @@ lee_el_teclado:
 atiende_el_menu:
 	ld e,08fh		;477d   ; el primer puerto de mando
 	call lee_un_puerto_del_psg		;477f
-	ld d,a			;4782
+	ld d,a			;4782   ; guardado
 	ld e,0cfh		;4783   ; y el segundo
 	call lee_un_puerto_del_psg		;4785
 	or d			;4788   ; se juntan
-	ld d,a			;4789
+	ld d,a			;4789   ; los dos juntos
 	call lee_el_teclado		;478a   ; mas el teclado
-	or d			;478d
+	or d			;478d   ; y el teclado encima: se juega con cualquiera de los tres
 	ld hl,0e040h		;478e   ; lo de ahora en (0xE040)
-	ld c,(hl)			;4791
+	ld c,(hl)			;4791   ; lo de antes
 	ld (hl),a			;4792   ; y lo de antes justo detras
-	inc hl			;4793
+	inc hl			;4793   ; el byte siguiente
 	ld (hl),c			;4794
-	ld b,a			;4795
+	ld b,a			;4795   ; en B
 	xor c			;4796   ; los bits que han cambiado
 	and b			;4797   ; y de esos, los que ahora estan pulsados: el flanco
 	ret z			;4798   ; nada nuevo, no se hace nada
-	ld b,a			;4799
+	ld b,a			;4799   ; los nuevos, en B
 	ld a,000h		;479a   ; se reinicia el plazo de la pantalla
-	ld (0e004h),a		;479c
+	ld (0e004h),a		;479c   ; guardado
 	ld a,005h		;479f   ; solo la escena 5 responde al menu
 	ld hl,0e000h		;47a1
 	cp (hl)			;47a4
@@ -2405,24 +2405,24 @@ L_50AD:
 	ld hl,0e0c4h		;50b0   ; el bufer de atributos en RAM
 	call mete_dos_sprites		;50b3   ; el primer sprite
 	ld a,010h		;50b6   ; dieciseis pixeles mas abajo: el segundo
-	add a,b			;50b8
-	ld b,a			;50b9
-	call mete_dos_sprites		;50ba
+	add a,b			;50b8   ; mas la fila
+	ld b,a			;50b9   ; guardada
+	call mete_dos_sprites		;50ba   ; y el segundo
 	ld a,(0e052h)		;50bd   ; el tipo de fase
 	cp 004h		;50c0
-	jr z,dibuja_al_jugador_de_la_fase_4		;50c2
+	jr z,dibuja_al_jugador_de_la_fase_4		;50c2   ; la fase 4 va aparte
 	cp 001h		;50c4
-	ret nz			;50c6
+	ret nz			;50c6   ; y las demas se quedan en dos
 	ld a,b			;50c7   ; en la fase 1 el jugador son CUATRO sprites, no dos
-	add a,010h		;50c8
-	ld b,a			;50ca
-	ld a,c			;50cb
+	add a,010h		;50c8   ; dieciseis mas abajo
+	ld b,a			;50ca   ; guardada
+	ld a,c			;50cb   ; la columna
 	sub 008h		;50cc   ; ocho a la izquierda
-	ld c,a			;50ce
-	call mete_un_sprite_con_patron		;50cf
-	ld a,c			;50d2
+	ld c,a			;50ce   ; guardada
+	call mete_un_sprite_con_patron		;50cf   ; el tercero
+	ld a,c			;50d2   ; la columna otra vez
 	add a,010h		;50d3   ; y dieciseis a la derecha
-	ld c,a			;50d5
+	ld c,a			;50d5   ; guardada
 	jr mete_dos_sprites		;50d6
 
 ; ----------------------------------------------------------------------
@@ -3580,52 +3580,52 @@ L_5721:
 	ld b,006h		;572f
 L_5731:
 	ld a,(hl)			;5731   ; un indice de patron
-	inc hl			;5732
-	exx			;5733
+	inc hl			;5732   ; el siguiente
+	exx			;5733   ; al juego alternativo, donde esta el puerto
 	out (c),a		;5734   ; y al VDP
-	exx			;5736
-	inc de			;5737
-	ld a,e			;5738
+	exx			;5736   ; y de vuelta
+	inc de			;5737   ; la celda siguiente
+	ld a,e			;5738   ; el byte bajo del destino
 	and 01fh		;5739   ; la columna
 	call z,baja_una_fila		;573b   ; final de fila: se baja a la siguiente
-	djnz L_5731		;573e
-	ld b,006h		;5740
-	call vuelca_franja_con_referencias		;5742
-	inc hl			;5745
+	djnz L_5731		;573e   ; y el resto de la franja
+	ld b,006h		;5740   ; seis celdas
+	call vuelca_franja_con_referencias		;5742   ; volcadas
+	inc hl			;5745   ; dos bytes mas alla
 	inc hl			;5746
 	ld a,02fh		;5747   ; el patron de relleno del hueco
-	dec c			;5749
-	jr nz,L_5721		;574a
+	dec c			;5749   ; una franja menos
+	jr nz,L_5721		;574a   ; y a por la siguiente
 	ld a,0eah		;574c   ; el desplazamiento al bloque de abajo
-	dec h			;574e
-	call suma_a_a_hl		;574f
+	dec h			;574e   ; la pagina de arriba
+	call suma_a_a_hl		;574f   ; sumado
 	ld a,0c0h		;5752
-	dec d			;5754
+	dec d			;5754   ; una fila menos
 	ld b,00fh		;5755   ; quince celdas
-	call vuelca_con_referencias		;5757
-	ld a,008h		;575a
-	call suma_a_a_hl		;575c
+	call vuelca_con_referencias		;5757   ; volcadas
+	ld a,008h		;575a   ; ocho mas alla
+	call suma_a_a_hl		;575c   ; sumado
 	ld a,031h		;575f
 	ld b,00fh		;5761   ; y otras quince en la fila siguiente
-	call vuelca_con_referencias		;5763
-	dec hl			;5766
+	call vuelca_con_referencias		;5763   ; volcadas
+	dec hl			;5766   ; el byte de antes
 	ld a,(hl)			;5767   ; el ultimo indice leido
 	sub 0b8h		;5768   ; menos 0xB8
 	and 00ch		;576a   ; dos bits: cuatro variantes
-	add a,a			;576c
+	add a,a			;576c   ; por dos
 	add a,080h		;576d   ; y con 0xE2 delante sale una direccion del bufer de RAM
-	ld l,a			;576f
-	ld h,0e2h		;5770
-	ld de,02288h		;5772
-	ld c,008h		;5775
+	ld l,a			;576f   ; en L
+	ld h,0e2h		;5770   ; y la pagina del bufer
+	ld de,02288h		;5772   ; el destino en la VRAM
+	ld c,008h		;5775   ; ocho celdas
 	call que_dibujo_toca		;5777   ; el tipo de fase decide si hay una segunda copia
-	jr nz,L_5788		;577a
-	push hl			;577c
+	jr nz,L_5788		;577a   ; en los demas tipos no la hay
+	push hl			;577c   ; se guarda el origen
 	ld d,02ah		;577d   ; la fila de la otra copia
-	call vuelca_bloque_a_vram		;577f
-	pop hl			;5782
-	ld de,03288h		;5783
-	ld c,008h		;5786
+	call vuelca_bloque_a_vram		;577f   ; volcada
+	pop hl			;5782   ; se recupera
+	ld de,03288h		;5783   ; y el otro destino
+	ld c,008h		;5786   ; ocho celdas
 L_5788:
 	jp vuelca_bloque_a_vram		;5788
 
@@ -3633,11 +3633,11 @@ L_5788:
 ; VOLCAR UNA FRANJA CON REFERENCIAS. Aqui el cero NO es un indice de patron: es una marca que dice "el trozo que va aqui esta en otro sitio", y el byte siguiente es el desplazamiento hacia atras (`suma_a_a_hl / dec h`, o sea restar). Es una compresion por diccionario metida dentro del propio dibujo, y por eso un decorado largo cabe en tan poco.
 ; ----------------------------------------------------------------------
 vuelca_con_referencias:
-	call avanza_sin_salir_de_la_fila		;578b
+	call avanza_sin_salir_de_la_fila		;578b   ; se avanza sin cambiar de fila
 vuelca_franja_con_referencias:
 	ld a,(hl)			;578e   ; el indice
 	or a			;578f   ; cero: es una referencia
-	jr nz,L_5799		;5790
+	jr nz,L_5799		;5790   ; si no lo es, se vuelca tal cual
 	inc hl			;5792
 	ld a,(hl)			;5793   ; el desplazamiento
 	call suma_a_a_hl		;5794
@@ -4266,38 +4266,38 @@ L_5B13:
 ; ----------------------------------------------------------------------
 avanza_con_la_velocidad:
 	ld hl,0e270h		;5b16   ; la velocidad
-	ld a,(hl)			;5b19
-	inc hl			;5b1a
+	ld a,(hl)			;5b19   ; leida
+	inc hl			;5b1a   ; el byte siguiente
 	add a,(hl)			;5b1b   ; mas el resto que quedaba
-	ld e,a			;5b1c
-	ld d,000h		;5b1d
+	ld e,a			;5b1c   ; en E
+	ld d,000h		;5b1d   ; y DE queda con el total
 	and 03fh		;5b1f   ; y el resto nuevo, seis bits
-	ld (hl),a			;5b21
-	ex de,hl			;5b22
+	ld (hl),a			;5b21   ; guardado
+	ex de,hl			;5b22   ; se cambian
 	add hl,hl			;5b23   ; dos veces por dos
 	add hl,hl			;5b24
 	ld c,h			;5b25   ; y lo que se desborda son los pixeles
-	ld hl,0e14ah		;5b26
+	ld hl,0e14ah		;5b26   ; la referencia del decorado
 	ld a,(hl)			;5b29   ; el decorado se corre
 	sub c			;5b2a
-	ld (hl),a			;5b2b
-	push bc			;5b2c
+	ld (hl),a			;5b2b   ; guardada
+	push bc			;5b2c   ; se guarda el avance
 	call pinta_la_figura_grande		;5b2d   ; se repinta la figura grande
-	pop bc			;5b30
+	pop bc			;5b30   ; se recupera
 	ld a,(0e056h)		;5b31   ; el numero de fase
-	or a			;5b34
+	or a			;5b34   ; la del titulo es la cero
 	jr nz,L_5B42		;5b35   ; en el titulo no hay segunda capa
-	ld hl,0e14ch		;5b37
-	ld a,(hl)			;5b3a
+	ld hl,0e14ch		;5b37   ; la segunda referencia
+	ld a,(hl)			;5b3a   ; leida
 	sub c			;5b3b   ; la otra referencia tambien se corre
-	ld (hl),a			;5b3c
-	push bc			;5b3d
-	call pinta_la_columna_que_entra		;5b3e
-	pop bc			;5b41
+	ld (hl),a			;5b3c   ; guardada
+	push bc			;5b3d   ; se guarda otra vez
+	call pinta_la_columna_que_entra		;5b3e   ; y se pinta la columna que entra
+	pop bc			;5b41   ; se recupera
 L_5B42:
 	push bc			;5b42
-	ld b,000h		;5b43
-	ld a,c			;5b45
+	ld b,000h		;5b43   ; el byte alto, a cero
+	ld a,c			;5b45   ; y el avance en el bajo
 	or a			;5b46
 	jr z,L_5B4E		;5b47
 	neg		;5b49   ; al reves para el desplazamiento del decorado
@@ -4345,50 +4345,50 @@ pinta_la_cola:
 	ld hl,0e25ch		;5b7c   ; los cuatro huecos
 	ld b,004h		;5b7f
 L_5B81:
-	push hl			;5b81
+	push hl			;5b81   ; se guardan los dos
 	push bc			;5b82
-	ld a,(hl)			;5b83
+	ld a,(hl)			;5b83   ; el estado del hueco
 	or a			;5b84
-	jr z,pasa_al_hueco_siguiente		;5b85
-	ex af,af'			;5b87
-	inc hl			;5b88
+	jr z,pasa_al_hueco_siguiente		;5b85   ; vacio: al siguiente
+	ex af,af'			;5b87   ; se guarda
+	inc hl			;5b88   ; el byte siguiente
 	ld d,(hl)			;5b89   ; la posicion del hueco
-	inc hl			;5b8a
+	inc hl			;5b8a   ; el siguiente
 	ld e,(hl)			;5b8b
-	ld c,e			;5b8c
-	inc hl			;5b8d
+	ld c,e			;5b8c   ; la columna, tambien en C
+	inc hl			;5b8d   ; y el ultimo
 	ld b,(hl)			;5b8e
 	call posicion_a_celda		;5b8f   ; convertida en celda
-	push de			;5b92
+	push de			;5b92   ; se guardan
 	push bc			;5b93
-	ld a,c			;5b94
+	ld a,c			;5b94   ; la columna
 	and 006h		;5b95   ; tres bits de la columna
-	ld c,a			;5b97
-	add a,a			;5b98   ; por cinco: cinco bytes de indices por variante
+	ld c,a			;5b97   ; en C
+	add a,a			;5b98   ; dos veces por dos
 	add a,a			;5b99
-	add a,c			;5b9a
-	rra			;5b9b
+	add a,c			;5b9a   ; mas ella misma
+	rra			;5b9b   ; entre dos: queda el indice
 	ld hl,07527h		;5b9c   ; la tabla de veinte indices
-	call suma_a_a_hl		;5b9f
-	push hl			;5ba2
+	call suma_a_a_hl		;5b9f   ; indexada
+	push hl			;5ba2   ; se guarda
 	call pinta_dos_o_tres_celdas		;5ba3   ; la fila de arriba
-	ld a,c			;5ba6
+	ld a,c			;5ba6   ; la columna
 	add a,00fh		;5ba7   ; quince mas para la de abajo
-	ex af,af'			;5ba9
-	pop hl			;5baa
+	ex af,af'			;5ba9   ; se guarda
+	pop hl			;5baa   ; se recuperan los tres
 	pop bc			;5bab
 	pop de			;5bac
 	ld a,020h		;5bad   ; y la fila siguiente, 32 celdas
-	call suma_a_a_de		;5baf
-	call pinta_dos_o_tres_celdas		;5bb2
+	call suma_a_a_de		;5baf   ; sumadas al destino
+	call pinta_dos_o_tres_celdas		;5bb2   ; y se pinta la de abajo
 pasa_al_hueco_siguiente:
-	pop bc			;5bb5
+	pop bc			;5bb5   ; se recuperan
 	pop hl			;5bb6
 	inc hl			;5bb7   ; cuatro bytes por hueco
 	inc hl			;5bb8
 	inc hl			;5bb9
 	inc hl			;5bba
-	djnz L_5B81		;5bbb
+	djnz L_5B81		;5bbb   ; y a por el siguiente
 	ret			;5bbd
 
 ; ----------------------------------------------------------------------
@@ -4484,49 +4484,49 @@ mira_la_cola_contra_el_jugador:
 	ld hl,0e25ch		;5c24
 	ld b,004h		;5c27   ; los cuatro huecos
 L_5C29:
-	push hl			;5c29
+	push hl			;5c29   ; se guardan los dos
 	push bc			;5c2a
-	ld a,(hl)			;5c2b
+	ld a,(hl)			;5c2b   ; el estado de la pieza
 	or a			;5c2c   ; vacio
-	jr z,pasa_a_la_pieza_siguiente		;5c2d
+	jr z,pasa_a_la_pieza_siguiente		;5c2d   ; al siguiente
 	ld de,(0e130h)		;5c2f   ; la posicion del jugador
 	inc hl			;5c33
-	inc hl			;5c34
-	ld a,d			;5c35
-	sub (hl)			;5c36
+	inc hl			;5c34   ; dos bytes mas alla
+	ld a,d			;5c35   ; la fila del jugador
+	sub (hl)			;5c36   ; menos la de la pieza
 	add a,010h		;5c37   ; dieciseis de margen
-	ld c,a			;5c39
-	inc hl			;5c3a
+	ld c,a			;5c39   ; en C
+	inc hl			;5c3a   ; el byte siguiente
 	ld a,(hl)			;5c3b   ; el tipo de pieza
 	add a,a			;5c3c   ; por ocho
 	add a,a			;5c3d
 	add a,a			;5c3e
 	add a,008h		;5c3f   ; mas ocho: el alto de la caja
-	cp c			;5c41
-	jr c,pasa_a_la_pieza_siguiente		;5c42
+	cp c			;5c41   ; comparado con la distancia
+	jr c,pasa_a_la_pieza_siguiente		;5c42   ; fuera: no choca
 	dec hl			;5c44
-	dec hl			;5c45
-	ld a,e			;5c46
-	sub (hl)			;5c47
+	dec hl			;5c45   ; dos atras
+	ld a,e			;5c46   ; la columna del jugador
+	sub (hl)			;5c47   ; menos la de la pieza
 	add a,01ch		;5c48   ; veintiocho en la otra
 	cp 024h		;5c4a   ; treinta y seis de ventana
-	jr nc,pasa_a_la_pieza_siguiente		;5c4c
+	jr nc,pasa_a_la_pieza_siguiente		;5c4c   ; fuera de la ventana
 	cp 004h		;5c4e   ; si cae en los cuatro de arriba, se ha saltado por encima
 	jr c,lo_ha_saltado		;5c50
-	pop bc			;5c52
+	pop bc			;5c52   ; se recuperan
 	pop hl			;5c53
-	scf			;5c54
+	scf			;5c54   ; acarreo: hay choque
 	call se_ha_caido		;5c55   ; y si no, se choca
-	ret			;5c58
+	ret			;5c58   ; y se vuelve
 
 ; ----------------------------------------------------------------------
 ; SALTAR POR ENCIMA DE UNA PIEZA, y aqui esta el premio por ENCADENAR: (0xE272) cuenta los saltos seguidos, sube hasta un tope de CUATRO, y lo que se cobra es ese contador por 512. O sea 512, 1024, 1536 y 2048 puntos: saltar seguido vale el cuadruple.
 ; ----------------------------------------------------------------------
 lo_ha_saltado:
-	ld a,c			;5c59
+	ld a,c			;5c59   ; la distancia en fila
 	cp 006h		;5c5a   ; seis pixeles de holgura
-	jr c,pasa_a_la_pieza_siguiente		;5c5c
-	pop bc			;5c5e
+	jr c,pasa_a_la_pieza_siguiente		;5c5c   ; por debajo, no lo salto
+	pop bc			;5c5e   ; se recuperan
 	pop hl			;5c5f
 	ld hl,051e9h		;5c60   ; la rampa del salto
 	call arranca_gesto_con_cero		;5c63
@@ -4811,28 +4811,28 @@ L_5E41:
 	call pinta_una_pose		;5e41
 L_5E44:
 	ld a,(0e1e2h)		;5e44   ; la segunda esta activa?
-	or a			;5e47
+	or a			;5e47   ; a cero: no hay segunda
 	ret z			;5e48
 	ld a,(0e1e1h)		;5e49   ; su paso propio
-	ld b,a			;5e4c
-	ld a,(0e1cah)		;5e4d
+	ld b,a			;5e4c   ; en B
+	ld a,(0e1cah)		;5e4d   ; su posicion
 	add a,b			;5e50   ; sumado
 	ret c			;5e51   ; si desborda, se deja
-	ld (0e1cbh),a		;5e52
-	cp 008h		;5e55
-	ret c			;5e57
-	ld hl,0e14ch		;5e58
-	ld e,(hl)			;5e5b
+	ld (0e1cbh),a		;5e52   ; guardada
+	cp 008h		;5e55   ; ocho de margen
+	ret c			;5e57   ; por debajo, se deja
+	ld hl,0e14ch		;5e58   ; la referencia del decorado
+	ld e,(hl)			;5e5b   ; leida
 	cp e			;5e5c   ; y no puede adelantar a la referencia
-	ret nc			;5e5d
-	ld e,a			;5e5e
-	ld d,020h		;5e5f
-	call posicion_a_celda		;5e61
-	ld a,(0e1e2h)		;5e64
-	ld bc,07876h		;5e67
-	bit 1,a		;5e6a
-	jr z,L_5E71		;5e6c
-	ld bc,0797eh		;5e6e
+	ret nc			;5e5d   ; y si la alcanza, se deja
+	ld e,a			;5e5e   ; la posicion
+	ld d,020h		;5e5f   ; y la fila fija
+	call posicion_a_celda		;5e61   ; convertida en celda
+	ld a,(0e1e2h)		;5e64   ; el estado otra vez
+	ld bc,07876h		;5e67   ; una pareja de patrones
+	bit 1,a		;5e6a   ; su bit 1
+	jr z,L_5E71		;5e6c   ; sin el, la primera
+	ld bc,0797eh		;5e6e   ; y con el, la otra
 L_5E71:
 	ld hl,0e1c9h		;5e71
 
@@ -5344,26 +5344,26 @@ L_6142:
 ; ----------------------------------------------------------------------
 L_6161:
 	ld hl,0e130h		;6161   ; el jugador
-	ld (hl),02eh		;6164
-	inc hl			;6166
-	ld (hl),03ch		;6167
+	ld (hl),02eh		;6164   ; la columna de partida
+	inc hl			;6166   ; el byte siguiente
+	ld (hl),03ch		;6167   ; la fila
 	inc hl			;6169
-	ld (hl),000h		;616a
+	ld (hl),000h		;616a   ; el estado, a cero
 	inc hl			;616c
-	inc hl			;616d
+	inc hl			;616d   ; dos mas alla
 	ld (hl),002h		;616e   ; estado 2
-	ld a,048h		;6170
+	ld a,048h		;6170   ; el valor
 	ld (0e14dh),a		;6172   ; la referencia del decorado
-	ld a,001h		;6175
+	ld a,001h		;6175   ; el paso
 	ld (0e1c0h),a		;6177   ; el paso de la primera figura
-	ld a,080h		;617a
+	ld a,080h		;617a   ; la posicion
 	ld (0e1cah),a		;617c   ; y la posicion de la segunda
 	ld hl,0e1e0h		;617f   ; los cuatro bytes de ritmo
-	ld (hl),041h		;6182
+	ld (hl),041h		;6182   ; el primero
 	inc hl			;6184
-	ld (hl),090h		;6185
+	ld (hl),090h		;6185   ; el segundo
 	inc hl			;6187
-	ld (hl),083h		;6188
+	ld (hl),083h		;6188   ; y el tercero
 	inc hl			;618a
 	ld (hl),0a0h		;618b
 	ld a,08dh		;618d   ; el sonido de esta fase
@@ -6876,26 +6876,26 @@ L_7BEE:
 ; ----------------------------------------------------------------------
 arranca_la_voz:
 	ld (hl),001h		;7bf9   ; la cuenta, a uno: suena ya
-	inc hl			;7bfb
-	ld (hl),001h		;7bfc
-	inc hl			;7bfe
+	inc hl			;7bfb   ; el byte siguiente
+	ld (hl),001h		;7bfc   ; a uno tambien
+	inc hl			;7bfe   ; el siguiente
 	ld (hl),c			;7bff   ; el numero de sonido
-	inc hl			;7c00
+	inc hl			;7c00   ; el siguiente
 	ld a,(de)			;7c01   ; y su partitura, dos bytes
-	ld (hl),a			;7c02
+	ld (hl),a			;7c02   ; el byte bajo
 	inc hl			;7c03
-	inc de			;7c04
+	inc de			;7c04   ; y el alto
 	ld a,(de)			;7c05
-	ld (hl),a			;7c06
+	ld (hl),a			;7c06   ; guardado
 	ld a,005h		;7c07   ; cinco bytes mas alla del estado
-	add a,l			;7c09
-	ld l,a			;7c0a
+	add a,l			;7c09   ; sumados al puntero
+	ld l,a			;7c0a   ; que asi queda en el sitio
 	ld (hl),000h		;7c0b   ; las vueltas, a cero
-	inc hl			;7c0d
-	pop af			;7c0e
+	inc hl			;7c0d   ; el byte siguiente
+	pop af			;7c0e   ; lo que se guardo
 	jr z,L_7C14		;7c0f
 	ex af,af'			;7c11
-	ld (hl),a			;7c12
+	ld (hl),a			;7c12   ; y se apunta
 	ex af,af'			;7c13
 L_7C14:
 	push af			;7c14
