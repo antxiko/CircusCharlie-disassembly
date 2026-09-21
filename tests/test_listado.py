@@ -213,6 +213,100 @@ class BloquesComprimidos(unittest.TestCase):
         self.assertEqual(sum(len(c) for _, c in tramos), 512)
 
 
+class ElVdpPintaCuatroSpritesPorLinea(unittest.TestCase):
+    """El tope de sprites del TMS9918, que es lo unico que separaba a
+    tools/vram.py de la pantalla de verdad.
+
+    El VDP recorre la lista de la 0 a la 31 y, en cuanto encuentra el QUINTO
+    sprite que cruza la linea que esta pintando, lo anota en el registro de
+    estado y no pinta ni ese ni los que vengan detras. Pintarlos todos es
+    dibujar una pantalla que la maquina no puede dar: en Circus Charlie son
+    SEIS los que cruzan las lineas 48 a 52 del acto del trampolin, y el
+    hardware se come dos.
+
+    Estos no necesitan el cartucho ni el emulador: se fabrica una VRAM a mano.
+    El cotejo contra el emulador de verdad es tools/coteja_pixels.py.
+    """
+
+    REGS = [0x02, 0xE2, 0x0E, 0x7F, 0x07, 0x76, 0x03, 0xE1]
+
+    def vram_con(self, sprites, grande=True):
+        """Una VRAM vacia con los sprites pedidos, cada uno de un color."""
+        v = bytearray(16384)
+        regs = list(self.REGS)
+        regs[1] = 0xE2 if grande else 0xE0
+        attr = regs[5] * 0x80
+        base = regs[6] * 0x800
+        for i in range(32 * 4):             # 0xD0 corta la lista: lista vacia
+            v[attr + i] = 0xD0
+        for n, (y, x, col) in enumerate(sprites):
+            v[attr + n * 4] = y
+            v[attr + n * 4 + 1] = x
+            v[attr + n * 4 + 2] = 0
+            v[attr + n * 4 + 3] = col
+        if len(sprites) < 32:
+            v[attr + len(sprites) * 4] = 0xD0
+        for i in range(32):                 # el patron 0, todo relleno
+            v[base + i] = 0xFF
+        return bytes(v), regs
+
+    def pinta(self, sprites, grande=True):
+        import vram
+        v, regs = self.vram_con(sprites, grande)
+        fondo = regs[7] & 0x0F
+        tela = [[fondo] * 256 for _ in range(192)]
+        vram.pinta_sprites(v, regs, tela, fondo)
+        return tela
+
+    def test_del_quinto_en_adelante_no_se_pinta(self):
+        """Seis sprites en la misma linea: se ven los cuatro primeros."""
+        colores = [2, 3, 4, 5, 6, 7]
+        tela = self.pinta([(50, 16 * i, c) for i, c in enumerate(colores)])
+        vistos = [tela[55][16 * i] for i in range(6)]
+        self.assertEqual(vistos, [2, 3, 4, 5, 1, 1],
+                         "el quinto y el sexto no los pinta el VDP")
+
+    def test_el_tope_es_por_linea_y_no_por_pantalla(self):
+        """Seis sprites repartidos de dos en dos: ninguna linea pasa de cuatro,
+        asi que se ven los seis."""
+        puestos = [(20, 0, 2), (20, 16, 3), (60, 32, 4),
+                   (60, 48, 5), (100, 64, 6), (100, 80, 7)]
+        tela = self.pinta(puestos)
+        vistos = [tela[y + 5][x] for y, x, _ in puestos]
+        self.assertEqual(vistos, [2, 3, 4, 5, 6, 7])
+
+    def test_un_sprite_transparente_gasta_su_plaza(self):
+        """El tope lo marca la RANURA OCUPADA, no el punto pintado: el VDP no
+        mira el color ni el dibujo, solo si el sprite cruza la linea. Con dos
+        transparentes delante, el quinto sigue sin verse."""
+        tela = self.pinta([(50, 0, 0), (50, 16, 0), (50, 32, 4),
+                           (50, 48, 5), (50, 64, 6)])
+        self.assertEqual(tela[55][32], 4)
+        self.assertEqual(tela[55][48], 5)
+        self.assertEqual(tela[55][64], 1, "es el quinto de la linea")
+
+    def test_el_de_menor_numero_queda_encima(self):
+        """Asi es como se hacen las figuras de varios colores en el MSX1:
+        solapando sprites de un color cada uno."""
+        tela = self.pinta([(50, 0, 6), (50, 0, 11)])
+        self.assertEqual(tela[55][4], 6)
+
+    def test_la_lista_se_corta_en_d0(self):
+        """Un sprite con y=0xD0 termina la lista, y los de detras no existen:
+        por eso los que 'sobran' en la linea no son los mismos si la lista
+        acaba antes."""
+        import vram
+        v, regs = self.vram_con([(50, 16 * i, 2 + i) for i in range(6)])
+        v = bytearray(v)
+        attr = regs[5] * 0x80
+        v[attr + 2 * 4] = 0xD0             # corta en el tercero
+        fondo = regs[7] & 0x0F
+        tela = [[fondo] * 256 for _ in range(192)]
+        vram.pinta_sprites(bytes(v), regs, tela, fondo)
+        vistos = [tela[55][16 * i] for i in range(6)]
+        self.assertEqual(vistos, [2, 3, 1, 1, 1, 1])
+
+
 class Escenas(unittest.TestCase):
     """La maquina de 0x6A42: descomprimir a RAM y volcar por mascaras."""
 

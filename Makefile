@@ -81,6 +81,30 @@ imagenes: $(ROM)
 	@mkdir -p docs/imagenes
 	python3 tools/graficos.py $(ROM) $(ORG) docs/imagenes
 
+# EL COTEJO CONTRA LA MAQUINA DE VERDAD, en dos pasos.
+#
+#   1. `pares`  deja correr el cartucho en openMSX y, en cada una de las cinco
+#               atracciones, dispara una foto y vuelca la VRAM de los trece
+#               cuadros de alrededor. Tarda un par de minutos y necesita el
+#               emulador, asi que no va en `make all`.
+#   2. `coteja` dibuja cada volcado con tools/vram.py y lo compara con la foto
+#               PUNTO POR PUNTO. La foto va un cuadro por detras de la lectura
+#               de la VRAM -medido-, y es ese cuadro el que tiene que dar cero.
+OPENMSX  ?= C:/Program Files/openMSX/openmsx.exe
+SERIE    ?= $(WORK)/serie
+# El segundo de cada atraccion en que se dispara la foto. Se puede mover: si un
+# punto suelto no casa, es que el juego estaba reescribiendo esa celda mientras
+# el VDP barria la linea, y con la foto en otro instante desaparece.
+INSTANTE ?= 27.9
+
+pares: $(ROM)
+	PP_SALIDA="$(CURDIR)/$(SERIE)" PP_INSTANTE=$(INSTANTE) \
+	    "$(OPENMSX)" -machine Philips_VG_8020 -cart $(ROM) \
+	                 -script tools/omsx_cuadro.tcl
+
+coteja:
+	@python3 tools/coteja_pixels.py --serie $(SERIE)
+
 # LA WEB
 #
 # Bilingue: el ingles en docs/ y el castellano en docs/es/. Las paginas se
@@ -96,4 +120,5 @@ web: $(ROM)
 clean:
 	rm -rf $(WORK)/circus.trace.json $(WORK)/circus.blocks
 
-.PHONY: all comprueba trace listado verify sanity test densidad imagenes web clean
+.PHONY: all comprueba trace listado verify sanity test densidad imagenes \
+        pares coteja web clean

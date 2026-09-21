@@ -100,40 +100,74 @@ def pinta_sprites(vram, regs, tela, fondo):
 
     En el MSX1 cada sprite es de un solo color, asi que las figuras de dos o
     mas colores se hacen SOLAPANDO sprites en la misma posicion: por eso hay
-    que pintarlos todos y en orden, del 31 al 0, para que el de menor numero
-    quede encima.
+    que pintarlos todos y en orden, del ultimo al primero, para que el de menor
+    numero quede encima.
+
+    Y HAY UN TOPE DE CUATRO POR LINEA DE BARRIDO, que no es un detalle: el
+    TMS9918 recorre la lista de la 0 a la 31 y, en cuanto encuentra el QUINTO
+    sprite que cruza la linea que esta pintando, lo anota en el registro de
+    estado y no pinta ni ese ni los que vengan detras. Pintarlos todos es
+    dibujar una pantalla que la maquina no puede dar: en el acto del trampolin
+    son seis los que cruzan las lineas 48 a 52, y el hardware se come dos.
+
+    El tope cuenta por RANURA OCUPADA, no por punto pintado: un sprite
+    transparente (color 0) o con el dibujo a cero gasta su plaza igual.
     """
     attr = regs[5] * 0x80
     base = regs[6] * 0x800
     grande = bool(regs[1] & 0x02)          # bit 1 del R1: sprites de 16x16
-    lado = 16 if grande else 8
-    for s in range(31, -1, -1):
+    ampliado = bool(regs[1] & 0x01)        # bit 0 del R1: al doble de tamano
+    lado = (16 if grande else 8) * (2 if ampliado else 1)
+
+    puestos = []
+    for s in range(32):
         y = vram[attr + s * 4]
-        if y == 0xD0:                      # 0xD0 corta la lista
-            continue
+        if y == 0xD0:                      # 0xD0 corta la lista: ahi se acaba
+            break
         x = vram[attr + s * 4 + 1]
         pat = vram[attr + s * 4 + 2]
         col = vram[attr + s * 4 + 3]
-        tinta = col & 0x0F
         if col & 0x80:                     # early clock: 32 puntos a la izquierda
             x -= 32
         y = (y + 1) & 0xFF
-        if y > 192:
-            y -= 256
-        if grande:
-            pat &= 0xFC
+        if y > 192:                        # los de arriba del todo entran por
+            y -= 256                       # abajo de la cuenta
+        puestos.append((s, x, y, pat & 0xFC if grande else pat, col & 0x0F))
+
+    # Que sprite se ve en cada linea: los CUATRO primeros que la cruzan.
+    permitido = [set() for _ in range(192)]
+    for py in range(192):
+        n = 0
+        for s, x, y, pat, tinta in puestos:
+            if y <= py < y + lado:
+                if n == 4:
+                    break                  # el quinto y los siguientes, fuera
+                permitido[py].add(s)
+                n += 1
+
+    paso = 2 if ampliado else 1
+    for s, x, y, pat, tinta in reversed(puestos):
+        if not tinta:
+            continue                       # el color 0 ocupa plaza pero no pinta
         d = base + pat * 8
         for cuarto in range(4 if grande else 1):
-            ox = (cuarto // 2) * 8
-            oy = (cuarto % 2) * 8
+            ox = (cuarto // 2) * 8 * paso
+            oy = (cuarto % 2) * 8 * paso
             for f in range(8):
                 b8 = vram[d + cuarto * 8 + f]
+                if not b8:
+                    continue
                 for b in range(8):
                     if not (b8 & (0x80 >> b)):
                         continue
-                    px_, py = x + ox + b, y + oy + f
-                    if 0 <= px_ < 256 and 0 <= py < 192 and tinta:
-                        tela[py][px_] = tinta
+                    for dy in range(paso):
+                        py = y + oy + f * paso + dy
+                        if not (0 <= py < 192) or s not in permitido[py]:
+                            continue
+                        for dx in range(paso):
+                            px_ = x + ox + b * paso + dx
+                            if 0 <= px_ < 256:
+                                tela[py][px_] = tinta
 
 
 def main():
