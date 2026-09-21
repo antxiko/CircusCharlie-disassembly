@@ -153,3 +153,90 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# ---------------------------------------------------------------- MONTAR
+def monta(rom, org, ini, vram, variante=0x42):
+    """Ejecuta la escena DE VERDAD, escribiendo en la VRAM.
+
+    Lo de arriba solo MIDE -recorre el guion para saber donde acaba-. Esto
+    ademas pinta, que es lo que hace falta para dibujar un nivel desde la ROM.
+
+    El bucle es el de 0x6A42:
+
+        0x6A51  descomprime un trozo al bufer de 0xE280
+        0x69D5  lee B y C y llama a prepara_la_figura (0x467B)
+        0x69DF  vuelca el bufer a la VRAM por MASCARAS DE OCHO BITS
+
+    Y LA CLAVE, que estaba mal leida en el comentario de arriba: los ocho
+    bytes que se escriben salen del BUFER, no del guion. En 0x6A1E hay un
+    `ex de,hl` que pone HL en el bufer y DE en el guion, asi que el guion solo
+    lleva las mascaras; cada bit a uno vuelca un patron -ocho bytes- y el
+    bufer avanza ocho EN LOS DOS CASOS (`add hl,bc` esta fuera del `call c`).
+    O sea que la mascara elige CUALES de los ocho patrones se escriben, y los
+    elegidos van seguidos desde el destino.
+
+    Cada fila reinicia el bufer (`ld de,0e280h` en 0x69F2), asi que todas las
+    filas eligen del mismo trozo descomprimido.
+
+    prepara_la_figura NO se reimplementa, y es correcto: sus tres pasadas de
+    giro escriben copias del dibujo MAS ARRIBA en el bufer (0xE280 + altura*8,
+    +2 y +3), para poder pintar la figura desplazada un bit, dos y tres. El
+    trozo original no lo toca. Lo unico que si lo tocaria es
+    `transpone_patrones` (0x468E), y solo se llama cuando los dos bits de
+    arriba de C estan puestos.
+    """
+    p = ini
+    for _ in range(64):
+        f, datos = descomprime_ram(rom, org, p)
+        if f is None:
+            return None
+        bufer = datos
+        p = f + 2                           # los dos bytes de 0x69D5
+        p = _vuelca(rom, org, p, vram, bufer, variante)
+        if p is None or p - org >= len(rom):
+            return None
+        if rom[p - org] == 0x00:
+            return p + 1
+    return None
+
+
+def _vuelca(rom, org, p, vram, bufer, variante):
+    """0x69DF (o 0x69FB): las filas, y por cada fila sus mascaras."""
+    pagina = 0
+    if variante == 0x42:
+        pagina = rom[p - org]               # ld d,(hl)
+        p += 1
+    while True:
+        fila = rom[p - org]
+        p += 1
+        if fila == 0x00:                    # or a / ret z
+            return p
+        d = pagina if variante == 0x42 else 0x05
+        destino = ((d << 8) | fila) * 8
+        destino = (destino | 0x4000) & 0x3FFF      # set 6,d, y el VDP ve 14 bits
+        if variante != 0x42:                # 0x6A10: un ajuste por fila
+            destino = (destino + rom[p - org]) & 0x3FFF
+            p += 1
+        p, destino = _mascaras(rom, org, p, vram, bufer, destino)
+        if p is None:
+            return None
+
+
+def _mascaras(rom, org, p, vram, bufer, destino):
+    """0x6A1A: mascaras de ocho bits, un bit por patron."""
+    pos = 0                                 # ld de,0e280h: el bufer, desde el principio
+    while True:
+        mascara = rom[p - org]
+        p += 1
+        for _ in range(8):                  # ld b,008h
+            bit = (mascara >> 7) & 1        # rl c
+            mascara = (mascara << 1) & 0xFF
+            if bit:
+                for i in range(8):          # copia_literal, ocho bytes
+                    if pos + i < len(bufer):
+                        vram[destino & 0x3FFF] = bufer[pos + i]
+                        destino += 1
+            pos += 8                        # add hl,bc, se escriba o no
+        if rom[p - org] == 0x00:            # ld a,(hl) / or a / jr nz
+            return p + 1, destino

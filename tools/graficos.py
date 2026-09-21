@@ -312,6 +312,127 @@ def vram_de_la_seleccion(rom, cursor=True, opcion=0):
     return v
 
 
+def vuelca_patrones_repetidos(v, rom, ini):
+    """0x462F: `[N][ocho bytes]` escribe ese patron N veces.
+
+    El bucle RETROCEDE ocho (`ld bc,0fff8h / add hl,bc`) despues de cada copia,
+    y solo al acabar las N avanza al patron siguiente. Un cero cierra la lista.
+    Devuelve donde acaba, que es lo que permite encadenar lo que venga detras
+    sin recargar el puntero.
+    """
+    p = ini - ORG
+    while True:
+        n = rom[p]
+        p += 1
+        if n == 0:
+            return ORG + p
+        for _ in range(n):
+            for i in range(8):
+                v.escribe(rom[p + i])
+        p += 8
+
+
+def copia_a_los_tres_tercios(v, de, n):
+    """0x4608: el tercio 0 al 1 y al 2, en COLOR y en PATRONES a la vez.
+
+    `copia_dos_tercios` copia n bytes de DE a DE+0x800 y repite 0x2000 mas
+    arriba, que es donde esta la otra tabla; y 0x4608 lo hace dos veces, de
+    modo que el primer tercio acaba en los tres.
+    """
+    for _ in range(2):
+        for base in (0x0000, 0x2000):
+            orig = (de + base) & 0x3FFF
+            dest = (de + base + 0x800) & 0x3FFF
+            v.b[dest:dest + n] = v.b[orig:orig + n]
+        de += 0x800
+
+
+def que_dibujo_toca(tipo):
+    """0x57A8: devuelve si toca el dibujo A (tipos 0 y 2) o el B."""
+    return tipo in (0, 2)
+
+
+def vuelca_la_tanda_cuatro_veces(v, rom, ini):
+    """0x6DB5: la MISMA lista de patrones repetidos, cuatro veces seguidas.
+
+    Guarda el puntero antes de cada pasada (`push hl`), asi que las cuatro
+    leen lo mismo y lo que avanza es el destino en la VRAM.
+    """
+    for _ in range(4):
+        vuelca_patrones_repetidos(v, rom, ini)
+
+
+def copia_dos_tercios(v, de, n):
+    """0x4612: el tercio DE al siguiente, en COLOR y en PATRONES."""
+    for base in (0x0000, 0x2000):
+        orig = (de + base) & 0x3FFF
+        dest = (de + base + 0x800) & 0x3FFF
+        v.b[dest:dest + n] = v.b[orig:orig + n]
+
+
+def decorado_de_la_fase_1(v, rom):
+    """0x6D97, el de la cuerda floja. Y 0x7149 detras, que lo apila el
+    despachador."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import escenas as E
+    E.monta(rom, ORG, 0x6DC1, v.b, 0x33)                 # 0x6D9A, por la otra puerta
+    v.situa(0x4B00)                                      # 0x6DA0
+    vuelca_la_tanda_cuatro_veces(v, rom, 0x6FA5)         # 0x6DA3
+    vuelca_la_tanda_cuatro_veces(v, rom, 0x6FC1)         # 0x6DA9
+    copia_dos_tercios(v, 0x0B00, 0x0280)                 # 0x6DB2
+    E.monta(rom, ORG, 0x7155, v.b, 0x42)                 # 0x714C
+    v.situa(0x1200)                                      # 0x714F
+    vuelca_patrones_repetidos(v, rom, 0x719E)            # 0x7152
+
+
+def vram_de_la_atraccion(rom, tipo=0):
+    """LO COMUN A LAS CINCO ATRACCIONES: la cadena de 0x6968.
+
+    ESTADO: INCOMPLETO, y aqui esta dicho para que nadie lo publique creyendo
+    que es la pantalla. Monta la cadena comun y, del reparto por tipo de fase
+    (la tabla de cinco de 0x5FEF), solo el decorado de la fase 1. FALTA el
+    remate de 0x699D -que el despachador apila antes de saltar- y ahi esta el
+    problema de fondo: `pinta_bloque_en_su_sitio` (0x6A6D) pasa por
+    `posicion_a_celda` y lee (0xE14A), o sea que **el decorado depende del
+    estado del juego en la RAM, no solo de la ROM**. Sin ese estado no hay
+    manera de montar la pantalla entera "desde la ROM" y ya.
+
+    Lo que SI esta cerrado es el motor: tools/escenas.py ejecuta ahora la
+    maquina de escenas, y lo que la escena del nivel escribe coincide al
+    100 % con el volcado de la atraccion del monociclo -167 bytes de 167- y al
+    96 % con otras tres.
+
+    Esto es el decorado que comparten las cinco; encima, cada tipo de fase
+    monta el suyo (la tabla de cinco de 0x5FEF).
+
+        0x696B  monta_escena 0x6BE3          la escena del nivel
+        0x6978  vuelca_patrones_repetidos    desde 0x6D1A, a la VRAM 0x4200
+        0x697B  descomprime_donde_quedo      con el MISMO puntero
+        0x697E  vuelca_lista_de_patrones     idem
+        0x6987  copia_a_los_tres_tercios     648 bytes
+        0x698A  monta_la_franja_de_abajo     0x72ED + sus patrones en 0x1680
+        0x6997  y, solo en los tipos 0 y 2, otros 1.016 bytes a los tres
+    """
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import escenas as E
+    v = vram_con_los_sprites(rom)                        # 0x5FD6
+    E.monta(rom, ORG, 0x6BE3, v.b, 0x42)                 # 0x696B
+    v.situa(0x4200)                                      # 0x6971
+    fin = vuelca_patrones_repetidos(v, rom, 0x6D1A)      # 0x6978
+    fin = descomprime(v, rom, fin, cabecera=False)       # 0x697B
+    vuelca_patrones_repetidos(v, rom, fin)               # 0x697E
+    copia_a_los_tres_tercios(v, 0x0000, 0x0288)          # 0x6987
+    E.monta(rom, ORG, 0x72ED, v.b, 0x42)                 # 0x72E4
+    v.situa(0x1680)                                      # 0x72E7
+    vuelca_patrones_repetidos(v, rom, 0x7335)            # 0x72EA
+    if que_dibujo_toca(tipo):                            # 0x698D
+        copia_a_los_tres_tercios(v, 0x0288, 0x03F8)      # 0x6997
+    # y encima, el decorado de SU tipo: la tabla de cinco de 0x5FEF
+    if tipo == 1:
+        decorado_de_la_fase_1(v, rom)                    # 0x5FF9
+    return v
+
+
 def pinta_celda(px, w, x0, y0, patron, color, esc=1):
     for f in range(8):
         p, c = patron[f], color[f]

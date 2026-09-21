@@ -291,6 +291,50 @@ class LasDosPantallasDeMenu(unittest.TestCase):
         self.assertNotEqual(set(v.b[0x1800:0x2000]), {0})
 
 
+class ElMotorDeEscenas(unittest.TestCase):
+    """La maquina de 0x6A42 EJECUTADA, no solo medida.
+
+    tools/escenas.py medía donde acaba cada escena; ahora ademas la pinta, que
+    es lo que hace falta para dibujar un nivel desde la ROM. La lectura que
+    faltaba estaba en 0x6A1E: un `ex de,hl` pone HL en el BUFER y DE en el
+    guion, asi que los ocho bytes que se escriben salen del bufer
+    descomprimido y no del guion; la mascara solo dice CUALES de los ocho
+    patrones se vuelcan, y el bufer avanza ocho se escriban o no.
+
+    Medido contra los volcados del emulador: lo que esta escena escribe
+    coincide al 100 % con la atraccion del monociclo y al 96 % con otras tres
+    -la diferencia es lo que cada atraccion pinta encima-.
+    """
+
+    def test_la_escena_del_nivel_acaba_donde_empieza_la_siguiente(self):
+        import escenas
+        v = bytearray(0x4000)
+        self.assertEqual(escenas.monta(lee(), ORG, 0x6BE3, v, 0x42), 0x6D1A)
+
+    def test_pintar_no_cambia_donde_acaba(self):
+        """El recorrido que mide y el que pinta tienen que dar lo mismo: si no,
+        uno de los dos esta leyendo el guion de otra manera."""
+        import escenas
+        for ini, var in ((0x6BE3, 0x42), (0x6DC1, 0x33), (0x7155, 0x42),
+                         (0x71EB, 0x42), (0x72ED, 0x42), (0x73C2, 0x42),
+                         (0x7498, 0x42)):
+            v = bytearray(0x4000)
+            self.assertEqual(escenas.monta(lee(), ORG, ini, v, var),
+                             escenas.escena(lee(), ORG, ini, var)[0],
+                             "la escena 0x%04X no acaba igual" % ini)
+
+    def test_la_escena_escribe_en_la_tabla_de_patrones(self):
+        """Y no en cualquier sitio: el destino sale de (D,E)*8 con el bit 14
+        puesto, que es la marca de escritura del VDP."""
+        import escenas
+        v = bytearray(0x4000)
+        escenas.monta(lee(), ORG, 0x6BE3, v, 0x42)
+        tocados = [a for a in range(0x4000) if v[a]]
+        self.assertTrue(tocados, "la escena no ha escrito nada")
+        self.assertTrue(all(0x2000 <= a < 0x3800 for a in tocados),
+                        "hay escrituras fuera de la tabla de patrones")
+
+
 class ElVdpPintaCuatroSpritesPorLinea(unittest.TestCase):
     """El tope de sprites del TMS9918, que es lo unico que separaba a
     tools/vram.py de la pantalla de verdad.
