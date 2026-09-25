@@ -8,9 +8,11 @@ everything that changes: the scenery, the start, the moving objects and the
 frame. **The first act is the lion**, measured by running the cartridge
 without forcing anything.
 
-The five pictures below **are not captures**: they are the cartridge running in
-`tools/corre_circus.py`. Checked against openMSX at the same instants, they
-have zero VRAM bytes different.
+The five pictures below **are neither captures nor the cartridge running**:
+they are the game frame written in Python from the cartridge's tables
+(`tools/pista.py`), without touching the controls, at frame 100 (200 for the
+balls). Checked against openMSX at the same frames, they have **zero bytes** of
+RAM and VRAM different.
 
 ## 0 · The trapeze
 

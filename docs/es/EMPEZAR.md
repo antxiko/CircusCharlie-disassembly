@@ -27,10 +27,10 @@ Para comprobarla:
 | `make listado` | traza el flujo y genera `src/circus.asm` con las notas | que el listado sale del cartucho y de `src/circus.notes`, no se edita a mano |
 | `make verify` | reensambla con `pasmo` y compara | que el listado ES la ROM, byte a byte |
 | `make sanity` | reparte los 16.384 bytes entre código y datos | que no queda ni un byte sin asignar |
-| `make test` | 47 tests | que las cifras de esta web son las del listado |
+| `make test` | 49 tests | que las cifras de esta web son las del listado |
 | `make imagenes` | dibuja todo lo de `docs/imagenes/` desde la ROM | que los formatos están bien leídos |
-| `make coteja_montaje` / `make coteja_arranque` | comparan con volcados de openMSX | cero bytes de diferencia |
+| `make coteja_montaje` / `make coteja_arranque` / `make coteja_pista` | comparan con volcados de openMSX | cero bytes de diferencia |
 
-Los dos cotejos necesitan antes los volcados del emulador:
-`tools/omsx_montaje.tcl` y `tools/omsx_arranque.tcl`, cada uno con su línea de
-uso en la cabecera. Ver [En el emulador](EN-EL-EMULADOR.html).
+Los tres cotejos necesitan antes los volcados del emulador:
+`tools/omsx_montaje.tcl` y `tools/omsx_arranque.tcl` (el de la pista usa los
+mismos que el arranque), cada uno con su línea de uso en la cabecera. Ver [En el emulador](EN-EL-EMULADOR.html).

@@ -31,11 +31,11 @@ Rewritten in Python in `tools/`:
   without touching the other half. `0x4647` mirrors the patterns and `0x467B`
   makes three copies shifted by 2, 4 and 6 pixels.
 
-## And the cartridge, running
+## And the ring, from the tables
 
-`tools/corre_circus.py` runs INIT up to the `jr $` and then the hook once per
-frame, on the small Z80 in `tools/z80run.py`, which stops dead on any opcode
-it does not know. The seven BIOS routines are imitated in Python. Against
-openMSX, five acts at ten instants each: **0 VRAM bytes different** (`make
-coteja_arranque`). The RAM only differs in the music and in the menu's
-curtain.
+`tools/pista.py` is the game frame routine by routine: it starts from the
+state left by `0x604C` and each act's start-up (`0x60B6`), and every frame it
+moves and draws what the game moves and draws. Against 43 openMSX dumps: **0
+bytes different** (`make coteja_pista`). `tools/corre_circus.py`, which runs
+the cartridge on the Z80 in `tools/z80run.py`, stays as a second check (`make
+coteja_arranque`), not as the source of the pictures.

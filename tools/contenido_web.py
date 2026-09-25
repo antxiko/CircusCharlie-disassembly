@@ -25,13 +25,12 @@ HALLAZGOS = {
          "interrupciones solapadas y atiende la que entro mientras tanto sin "
          "volver a la pila.</p>"),
 
-        ("Un cartucho que corre en Python",
+        ("La pista, desde las tablas",
          "<p>Los personajes y los obstaculos no los pone el montaje: los pone "
-         "el juego cuadro a cuadro. En vez de reescribir esa logica a mano, "
-         "<code>tools/corre_circus.py</code> <b>ejecuta el cartucho</b> de "
-         "INIT a la pista, con las siete rutinas de la BIOS imitadas. Contra "
-         "openMSX, cinco atracciones por diez instantes: <b>0 bytes de VRAM "
-         "distintos</b>.</p>"),
+         "el juego cuadro a cuadro. <code>tools/pista.py</code> reescribe ese "
+         "cuadro desde las tablas del cartucho -moviles <code>0x549B</code>, "
+         "poses <code>0x5116</code>, arranques <code>0x6161</code>- y contra "
+         "43 volcados de openMSX da <b>0 bytes distintos</b>.</p>"),
 
         ("Cinco numeros, un byte",
          "<p><code>(0xE052)</code> dice que atraccion es, de 0 a 4, y el "
@@ -70,13 +69,13 @@ HALLAZGOS = {
          "interrupts and serves the one that came in meanwhile without going "
          "back through the stack.</p>"),
 
-        ("A cartridge that runs in Python",
+        ("The ring, from the tables",
          "<p>The characters and obstacles are not placed by the scenery "
-         "set-up: the game places them frame by frame. Rather than rewriting "
-         "that logic by hand, <code>tools/corre_circus.py</code> <b>runs the "
-         "cartridge</b> from INIT to the ring, with the seven BIOS routines "
-         "imitated. Against openMSX, five acts at ten instants each: <b>0 "
-         "VRAM bytes different</b>.</p>"),
+         "set-up: the game places them frame by frame. "
+         "<code>tools/pista.py</code> rewrites that frame from the "
+         "cartridge's tables -moving objects <code>0x549B</code>, poses "
+         "<code>0x5116</code>, start-ups <code>0x6161</code>- and against 43 "
+         "openMSX dumps it gives <b>0 bytes different</b>.</p>"),
 
         ("Five acts, one byte",
          "<p><code>(0xE052)</code> says which act it is, 0 to 4, and the "
@@ -110,10 +109,10 @@ HALLAZGOS = {
 
 GALERIA = [
     ("en-pista-0-trapecio.png",
-     "El trapecio, con la cama elastica abajo. El cartucho ejecutandose en "
-     "tools/corre_circus.py, no una captura.",
-     "The trapeze, with the trampoline below. The cartridge running in "
-     "tools/corre_circus.py, not a capture."),
+     "El trapecio, con la cama elastica abajo. Dibujado desde las tablas, "
+     "no una captura.",
+     "The trapeze, with the trampoline below. Drawn from the tables, not a "
+     "capture."),
     ("en-pista-1-leon.png",
      "El leon y el aro de fuego, que esta pintado con tiles del fondo.",
      "The lion and the ring of fire, which is drawn with background tiles."),

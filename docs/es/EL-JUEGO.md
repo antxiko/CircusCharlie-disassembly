@@ -7,9 +7,11 @@ Cada número es un tipo de fase, el byte `(0xE052)`, y el cartucho reparte por
 él todo lo que cambia: el decorado, el arranque, los móviles y el cuadro. **Se
 empieza por el león**, medido corriendo el cartucho sin forzar nada.
 
-Las cinco imágenes de abajo **no son capturas**: son el cartucho ejecutándose
-en `tools/corre_circus.py`. Cotejadas contra openMSX en los mismos instantes,
-dan cero bytes de VRAM distintos.
+Las cinco imágenes de abajo **no son capturas ni el cartucho ejecutándose**:
+son el cuadro de partida escrito en Python desde las tablas del cartucho
+(`tools/pista.py`), sin tocar el mando, en el cuadro 100 (en las bolas, el
+200). Cotejadas contra openMSX en los mismos cuadros, dan **cero bytes** de RAM
+y VRAM distintos.
 
 ## 0 · El trapecio
 

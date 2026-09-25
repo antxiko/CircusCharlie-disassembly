@@ -86,7 +86,7 @@ audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
 <h1 id="el-juego">El juego</h1>
 <p><img src="../imagenes/rotulo.png" alt="El rótulo"></p>
 <p>Charlie, el payaso, tiene que cruzar la pista en <b>cinco números de circo</b>. Cada número es un tipo de fase, el byte <code>(0xE052)</code>, y el cartucho reparte por él todo lo que cambia: el decorado, el arranque, los móviles y el cuadro. <b>Se empieza por el león</b>, medido corriendo el cartucho sin forzar nada.</p>
-<p>Las cinco imágenes de abajo <b>no son capturas</b>: son el cartucho ejecutándose en <code>tools/corre_circus.py</code>. Cotejadas contra openMSX en los mismos instantes, dan cero bytes de VRAM distintos.</p>
+<p>Las cinco imágenes de abajo <b>no son capturas ni el cartucho ejecutándose</b>: son el cuadro de partida escrito en Python desde las tablas del cartucho (<code>tools/pista.py</code>), sin tocar el mando, en el cuadro 100 (en las bolas, el 200). Cotejadas contra openMSX en los mismos cuadros, dan <b>cero bytes</b> de RAM y VRAM distintos.</p>
 <h2 id="0-el-trapecio">0 · El trapecio</h2>
 <p>Charlie salta de un trapecio a otro, con la cama elástica abajo. Los dos trapecios se balancean cada uno a su ritmo: cuatro bytes de ritmo puestos a mano en <code>0x6161</code> y una sola tabla de duraciones, <code>0x5F61</code>, para los dos. Es el cuadro más cargado del cartucho: seis llamadas en <code>0x4CC2</code>.</p>
 <p><img src="../imagenes/en-pista-0-trapecio.png" alt="El trapecio"></p>

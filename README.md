@@ -8,9 +8,8 @@ reassembles the ROM **byte for byte** with `pasmo`, and every one of its
 **576 routines, none below 10% commented**, and the density is **47.1%**.
 
 The five acts are drawn from the ROM: the scenery with the cartridge's own
-set-up chain, and the characters and obstacles by **running the cartridge** on
-a Z80 written in Python. Both are checked against openMSX's VRAM down to
-**zero bytes**.
+set-up chain, and the characters and obstacles with the **game frame written
+from its tables**. Both are checked against openMSX down to **zero bytes**.
 
 The ROM is not distributed.
 

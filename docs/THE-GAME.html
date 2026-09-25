@@ -86,7 +86,7 @@ audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
 <h1 id="the-game">The game</h1>
 <p><img src="imagenes/rotulo.png" alt="The logo"></p>
 <p>Charlie the clown has to cross the ring in <b>five circus acts</b>. Each act is a stage type, the byte <code>(0xE052)</code>, and the cartridge dispatches on it for everything that changes: the scenery, the start, the moving objects and the frame. <b>The first act is the lion</b>, measured by running the cartridge without forcing anything.</p>
-<p>The five pictures below <b>are not captures</b>: they are the cartridge running in <code>tools/corre_circus.py</code>. Checked against openMSX at the same instants, they have zero VRAM bytes different.</p>
+<p>The five pictures below <b>are neither captures nor the cartridge running</b>: they are the game frame written in Python from the cartridge&#x27;s tables (<code>tools/pista.py</code>), without touching the controls, at frame 100 (200 for the balls). Checked against openMSX at the same frames, they have <b>zero bytes</b> of RAM and VRAM different.</p>
 <h2 id="0-the-trapeze">0 · The trapeze</h2>
 <p>Charlie jumps from one trapeze to the other, with the trampoline below. The two trapezes swing each to its own rhythm: four rhythm bytes set by hand at <code>0x6161</code> and a single duration table, <code>0x5F61</code>, for both. It is the busiest frame in the cartridge: six calls at <code>0x4CC2</code>.</p>
 <p><img src="imagenes/en-pista-0-trapecio.png" alt="The trapeze"></p>

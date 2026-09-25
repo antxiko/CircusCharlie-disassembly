@@ -8,9 +8,9 @@ asignado: **7.894 de código y 8.490 de datos**. Son **576 rutinas, ninguna por
 debajo del 10 % comentado**, y una densidad del **47,1 %**.
 
 Las cinco atracciones están dibujadas desde la ROM: el decorado con la cadena
-de montaje del propio cartucho, y los personajes y obstáculos **ejecutando el
-cartucho** en un Z80 escrito en Python. Las dos cosas están cotejadas contra la
-VRAM de openMSX a **cero bytes**.
+de montaje del propio cartucho, y los personajes y obstáculos con el **cuadro
+de partida escrito desde sus tablas**. Las dos cosas están cotejadas contra
+openMSX a **cero bytes**.
 
 La ROM no se distribuye.
 

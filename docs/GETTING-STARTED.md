@@ -27,10 +27,11 @@ To check it:
 | `make listado` | traces the flow and generates `src/circus.asm` with the notes | that the listing comes from the cartridge and `src/circus.notes`, not hand edits |
 | `make verify` | reassembles with `pasmo` and compares | that the listing IS the ROM, byte for byte |
 | `make sanity` | splits the 16,384 bytes into code and data | that not one byte is left unassigned |
-| `make test` | 47 tests | that the numbers on this site are the listing's |
+| `make test` | 49 tests | that the numbers on this site are the listing's |
 | `make imagenes` | draws everything in `docs/imagenes/` from the ROM | that the formats are read right |
-| `make coteja_montaje` / `make coteja_arranque` | compare against openMSX dumps | zero bytes different |
+| `make coteja_montaje` / `make coteja_arranque` / `make coteja_pista` | compare against openMSX dumps | zero bytes different |
 
-Both comparisons need the emulator dumps first: `tools/omsx_montaje.tcl` and
-`tools/omsx_arranque.tcl`, each with its usage line in the header. See
+All three comparisons need the emulator dumps first: `tools/omsx_montaje.tcl`
+and `tools/omsx_arranque.tcl` (the ring one uses the same dumps as the start),
+each with its usage line in the header. See
 [In the emulator](IN-THE-EMULATOR.html).

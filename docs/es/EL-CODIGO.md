@@ -32,11 +32,11 @@ Reescritas en Python en `tools/`:
   `0x4647` espeja los patrones y `0x467B` hace tres copias desplazadas 2, 4 y
   6 píxeles.
 
-## Y el cartucho, ejecutado
+## Y la pista, desde las tablas
 
-`tools/corre_circus.py` corre INIT hasta el `jr $` y después el gancho una vez
-por cuadro, sobre el Z80 pequeño de `tools/z80run.py`, que revienta ante
-cualquier opcode que no conozca. Las siete rutinas de la BIOS se imitan en
-Python. Contra openMSX, en cinco atracciones por diez instantes: **0 bytes de
-VRAM distintos** (`make coteja_arranque`). La RAM solo difiere en la música y
-en la cortinilla del menú.
+`tools/pista.py` es el cuadro de partida rutina a rutina: parte del estado que
+dejan `0x604C` y el arranque de cada número (`0x60B6`), y en cada cuadro mueve
+y pinta lo que mueve y pinta el juego. Contra 43 volcados de openMSX: **0 bytes
+distintos** (`make coteja_pista`). `tools/corre_circus.py`, que ejecuta el
+cartucho en el Z80 de `tools/z80run.py`, queda como segunda vara (`make
+coteja_arranque`), no como fuente de las imágenes.
