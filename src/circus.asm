@@ -3121,19 +3121,19 @@ L_549A:
 	pop bc			;549a
 
 ; ----------------------------------------------------------------------
-; LA TABLA DE MOVILES DEPENDE DE LA FASE: la 1 usa la de 0x54C5, las de bit 1 puesto la de 0x5A6F y el resto la de 0x5F8F. Las tres tienen el mismo formato, 32 pares de (bandera, altura), y de ahi salen los dos bytes que se copian al estado del movil.
+; LA TABLA DE MOVILES DEPENDE DEL TIPO DE ATRACCION (0xE052): el leon (tipo 1) usa la de 0x54C5, los tipos con el bit 1 puesto -cuerda floja y bolas- la de 0x5A6F, y el trapecio y el caballo la de 0x5F8F. Las tres tienen el mismo formato, 32 pares de (bandera, altura), y de ahi salen los dos bytes que se copian al estado del movil.
 ; ----------------------------------------------------------------------
 elige_la_tabla_del_movil:
 	add a,a			;549b   ; el indice, por dos: son pares
 	push af			;549c   ; el indice se guarda mientras se elige la tabla
 	ld a,(0e052h)		;549d   ; el tipo de fase
-	ld hl,054c5h		;54a0   ; la tabla de la fase 1
+	ld hl,054c5h		;54a0   ; la del leon, tipo 1
 	cp 001h		;54a3   ; la fase 1 tiene la suya
 	jr z,L_54B1		;54a5
-	ld hl,05a6fh		;54a7   ; la de las fases pares
+	ld hl,05a6fh		;54a7   ; la de los tipos 2 y 3: bit 1 puesto
 	bit 1,a		;54aa   ; las de bit 1 puesto, otra
 	jr nz,L_54B1		;54ac
-	ld hl,05f8fh		;54ae   ; y la de las demas
+	ld hl,05f8fh		;54ae   ; y la de los tipos 0 y 4
 L_54B1:
 	pop af			;54b1   ; y el indice, de vuelta
 	call suma_a_a_hl		;54b2   ; indexada
@@ -5110,7 +5110,7 @@ DATA_tabla_5FEF:
 
 
 ; ----------------------------------------------------------------------
-; MONTAJE DE LA FASE TIPO 1, EL LEON: el decorado de 0x6D97 y, encima, el de 0x7149. Los cinco encabezados de esta tabla van por el INDICE de 0x5FEF, que es (0xE052): 0=trampolin, 1=leon, 2=cuerda floja, 3=bolas, 4=caballo. Se sabe por los volcados de tools/omsx_montaje.tcl, con el tipo forzado y la foto delante.
+; MONTAJE DE LA FASE TIPO 1, EL LEON: el decorado de 0x6D97 y, encima, el de 0x7149. Los cinco encabezados de esta tabla van por el INDICE de 0x5FEF, que es (0xE052): 0=trapecio, 1=leon, 2=cuerda floja, 3=bolas, 4=caballo. Se sabe por los volcados de tools/omsx_montaje.tcl, con el tipo forzado y la foto delante.
 ; ----------------------------------------------------------------------
 L_5FF9:
 	call monta_el_decorado_del_leon		;5ff9
@@ -5151,10 +5151,10 @@ L_601F:
 	jp descomprime		;6031
 
 ; ----------------------------------------------------------------------
-; MONTAJE DE LA FASE TIPO 0, EL TRAMPOLIN: el decorado de 0x753B, el bloque de 0x67A1 y los patrones de sprite de 0x667D.
+; MONTAJE DE LA FASE TIPO 0, EL TRAPECIO (con la cama elastica abajo): el decorado de 0x753B, el bloque de 0x67A1 y los patrones de sprite de 0x667D.
 ; ----------------------------------------------------------------------
 L_6034:
-	call monta_el_decorado_del_trampolin		;6034
+	call monta_el_decorado_del_trapecio		;6034
 	ld hl,067a1h		;6037
 	call descomprime		;603a
 carga_los_sprites_667D:
@@ -5163,10 +5163,10 @@ carga_los_sprites_667D:
 	jp descomprime_en_de		;6043
 pon_a_cero:
 	xor a			;6046
-pon_b_bytes_a_cero:
-	ld (hl),a			;6047   ; un cero
+rellena_b_bytes_con_a:
+	ld (hl),a			;6047   ; el byte de A: cero si se entra por 0x6046
 	inc hl			;6048
-	djnz pon_b_bytes_a_cero		;6049   ; B veces
+	djnz rellena_b_bytes_con_a		;6049   ; B veces
 	ret			;604b
 
 ; ----------------------------------------------------------------------
@@ -5184,7 +5184,7 @@ limpia_el_estado_de_la_fase:
 	ld a,0c3h		;605f
 	ld hl,0e0b0h		;6061   ; el bufer de sprites
 	ld b,080h		;6064   ; 128 bytes
-	call pon_b_bytes_a_cero		;6066
+	call rellena_b_bytes_con_a		;6066
 	ld de,0e0e0h		;6069   ; la primera copia
 	ld hl,06d63h		;606c   ; los trece sprites
 	ld bc,00010h		;606f   ; dieciseis bytes
@@ -5239,7 +5239,7 @@ DATA_tabla_60B6:
 
 
 ; ----------------------------------------------------------------------
-; ARRANQUE DE LA FASE TIPO 0: cuatro moviles a la fila 0x48 y el jugador en (0x85, 0x3C). Si el bit 6 de (0xE002) esta puesto -o sea, ya no estamos en el menu- ademas suena el 0x89.
+; ARRANQUE DE LA FASE TIPO 1, EL LEON: cuatro moviles -los aros de fuego- a la fila 0x48 y el jugador en (0x85, 0x3C). Si el bit 6 de (0xE002) esta puesto -o sea, ya no estamos en el menu- ademas suena el 0x89. Los cinco encabezados de esta tabla van, como los de 0x5FEF, por el INDICE de 0x60B6: 0x6161 es el tipo 0, 0x60C0 el 1, 0x60F2 el 2, 0x6139 el 3 y 0x6142 el 4. Medido en la RAM de openMSX tras el arranque (tools/omsx_arranque.tcl).
 ; ----------------------------------------------------------------------
 L_60C0:
 	ld de,06196h		;60c0   ; la lista de siete
@@ -5271,7 +5271,7 @@ L_60D8:
 	jp pide_un_sonido		;60ef
 
 ; ----------------------------------------------------------------------
-; ARRANQUE DE LA FASE TIPO 1: coloca el suelto en (0xD0, 0x50) con su plazo de 13 y le pone la rampa de 0x59FA.
+; ARRANQUE DE LA FASE TIPO 2, LA CUERDA FLOJA: coloca el suelto -el mono- en (0xD0, 0x50) con su plazo de 13 y le pone la rampa de 0x59FA.
 ; ----------------------------------------------------------------------
 L_60F2:
 	ld hl,0e1b0h		;60f2
@@ -5316,7 +5316,7 @@ baja_los_tres_recogibles:
 	ret			;6138
 
 ; ----------------------------------------------------------------------
-; ARRANQUE DE LA FASE TIPO 2: el jugador entra en 0x7E, no en 0x3F, y con el mismo dibujo puesto en (0xE18C).
+; ARRANQUE DE LA FASE TIPO 3, LAS BOLAS: el jugador entra en 0x7E, no en 0x3F, y con el mismo dibujo puesto en (0xE18C).
 ; ----------------------------------------------------------------------
 L_6139:
 	ld a,07eh		;6139
@@ -5325,7 +5325,7 @@ L_6139:
 	jr pon_al_jugador_en_su_sitio		;6140
 
 ; ----------------------------------------------------------------------
-; ARRANQUE DE LA FASE TIPO 3: engancha el guion de la cola (0x5C8E) en sus DOS punteros -el que avanza y el que guarda el principio- y deja la primera pieza a un cuadro vista.
+; ARRANQUE DE LA FASE TIPO 4, EL CABALLO: engancha el guion de la cola (0x5C8E) en sus DOS punteros -el que avanza y el que guarda el principio- y deja la primera pieza a un cuadro vista.
 ; ----------------------------------------------------------------------
 L_6142:
 	ld de,061a4h		;6142   ; la lista de siete
@@ -5344,7 +5344,7 @@ L_6142:
 	jp L_60D8		;615e
 
 ; ----------------------------------------------------------------------
-; ARRANQUE DE LA FASE TIPO 4, la de las dos figuras grandes: el jugador en (0x2E, 0x3C) con el estado 2, la referencia en 0x48 y los cuatro bytes de ritmo de las figuras -0x41, 0x90, 0x83 y 0xA0- puestos a mano.
+; ARRANQUE DE LA FASE TIPO 0, EL TRAPECIO, la de las dos figuras grandes -los dos trapecios que se balancean, por la foto de tools/corre_circus.py-: el jugador en (0x2E, 0x3C) con el estado 2, la referencia en 0x48 y los cuatro bytes de ritmo de las figuras -0x41, 0x90, 0x83 y 0xA0- puestos a mano.
 ; ----------------------------------------------------------------------
 L_6161:
 	ld hl,0e130h		;6161   ; el jugador
@@ -6331,9 +6331,9 @@ DATA_indices_7527:
 
 
 ; ----------------------------------------------------------------------
-; EL DECORADO DEL TRAMPOLIN (tipo 0). Descomprime el bloque de 0x7596 y sigue con `call L_45D1` SIN tocar HL, o sea que lo que hay en 0x7658 es la segunda mitad del mismo bloque. Luego vuelca los MISMOS bytes otra vez por 0x7567, con los bits del reves: la primera mitad a 0x2680 y, siguiendo por donde dejo la primera llamada, la segunda a 0x25C0. Y 1.152 celdas de 0xF0 y el tercio 0 al 1.
+; EL DECORADO DEL TRAPECIO (tipo 0). Descomprime el bloque de 0x7596 y sigue con `call L_45D1` SIN tocar HL, o sea que lo que hay en 0x7658 es la segunda mitad del mismo bloque. Luego vuelca los MISMOS bytes otra vez por 0x7567, con los bits del reves: la primera mitad a 0x2680 y, siguiendo por donde dejo la primera llamada, la segunda a 0x25C0. Y 1.152 celdas de 0xF0 y el tercio 0 al 1.
 ; ----------------------------------------------------------------------
-monta_el_decorado_del_trampolin:
+monta_el_decorado_del_trapecio:
 	ld hl,07596h		;753b
 	call descomprime		;753e   ; el primer bloque
 	call descomprime_donde_quedo		;7541   ; y el segundo, pegado detras

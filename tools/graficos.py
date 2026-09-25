@@ -576,8 +576,8 @@ def carga_los_sprites_667D(v, rom):
     descomprime_en_de(v, rom, 0x667D, 0x1BA0)
 
 
-def decorado_del_trampolin(v, rom):
-    """0x753B, el del TRAMPOLIN (tipo 0). Dos bloques encadenados, los mismos
+def decorado_del_trapecio(v, rom):
+    """0x753B, el del TRAPECIO (tipo 0). Dos bloques encadenados, los mismos
     bytes volcados otra vez con los bits del reves -la primera mitad a 0x2680
     y la segunda a 0x25C0-, 1.152 celdas de 0xF0 y el tercio 0 copiado al 1."""
     fin = descomprime(v, rom, 0x7596)                    # 0x753E
@@ -615,7 +615,7 @@ def decorado_del_caballo(v, rom):
 def decorado_del_tipo(v, rom, tipo):
     """La tabla de cinco de 0x5FEF, una entrada por tipo de fase."""
     if tipo == 0:                                        # 0x6034
-        decorado_del_trampolin(v, rom)
+        decorado_del_trapecio(v, rom)
         descomprime(v, rom, 0x67A1)                      # 0x603A
         carga_los_sprites_667D(v, rom)              # 0x603D
     elif tipo == 1:                                      # 0x5FF9
@@ -826,7 +826,7 @@ def vram_con_los_sprites(rom):
         0x61BA  909 bytes -> 1376 en 0x1800, los dibujos de las figuras
         0x5FCF  los del marco
 
-    Cotejado contra el volcado de la atraccion del trampolin: 0 de 2048. Las
+    Cotejado contra el volcado de la atraccion del trapecio: 0 de 2048. Las
     otras cuatro atracciones AÑADEN los suyos encima (por ejemplo 0x6025
     descomprime 0x6323 sobre 0x1B20), asi que esta hoja es la base comun, no
     todo lo que llega a haber.

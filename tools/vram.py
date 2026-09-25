@@ -107,7 +107,7 @@ def pinta_sprites(vram, regs, tela, fondo):
     TMS9918 recorre la lista de la 0 a la 31 y, en cuanto encuentra el QUINTO
     sprite que cruza la linea que esta pintando, lo anota en el registro de
     estado y no pinta ni ese ni los que vengan detras. Pintarlos todos es
-    dibujar una pantalla que la maquina no puede dar: en el acto del trampolin
+    dibujar una pantalla que la maquina no puede dar: en el acto del trapecio
     son seis los que cruzan las lineas 48 a 52, y el hardware se come dos.
 
     El tope cuenta por RANURA OCUPADA, no por punto pintado: un sprite

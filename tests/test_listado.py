@@ -343,7 +343,7 @@ class ElVdpPintaCuatroSpritesPorLinea(unittest.TestCase):
     sprite que cruza la linea que esta pintando, lo anota en el registro de
     estado y no pinta ni ese ni los que vengan detras. Pintarlos todos es
     dibujar una pantalla que la maquina no puede dar: en Circus Charlie son
-    SEIS los que cruzan las lineas 48 a 52 del acto del trampolin, y el
+    SEIS los que cruzan las lineas 48 a 52 del acto del trapecio, y el
     hardware se come dos.
 
     Estos no necesitan el cartucho ni el emulador: se fabrica una VRAM a mano.

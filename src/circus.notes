@@ -1553,12 +1553,12 @@ C 0x548b cada dieciseis
 C 0x5490 doce menos
 C 0x5496 o dieciseis si venia de 0x20
 L 0x549b elige_la_tabla_del_movil
-B 0x549b LA TABLA DE MOVILES DEPENDE DE LA FASE: la 1 usa la de 0x54C5, las de bit 1 puesto la de 0x5A6F y el resto la de 0x5F8F. Las tres tienen el mismo formato, 32 pares de (bandera, altura), y de ahi salen los dos bytes que se copian al estado del movil.
+B 0x549b LA TABLA DE MOVILES DEPENDE DEL TIPO DE ATRACCION (0xE052): el leon (tipo 1) usa la de 0x54C5, los tipos con el bit 1 puesto -cuerda floja y bolas- la de 0x5A6F, y el trapecio y el caballo la de 0x5F8F. Las tres tienen el mismo formato, 32 pares de (bandera, altura), y de ahi salen los dos bytes que se copian al estado del movil.
 C 0x549b el indice, por dos: son pares
 C 0x549d el tipo de fase
-C 0x54a0 la tabla de la fase 1
-C 0x54a7 la de las fases pares
-C 0x54ae y la de las demas
+C 0x54a0 la del leon, tipo 1
+C 0x54a7 la de los tipos 2 y 3: bit 1 puesto
+C 0x54ae y la de los tipos 0 y 4
 C 0x54b2 indexada
 C 0x54b5 el primer byte al estado del movil
 C 0x54b9 y el segundo detras
@@ -2438,7 +2438,7 @@ C 0x5fe2 lo comun a todas las fases
 C 0x5fe5 el remate, apilado a mano
 C 0x5fe9 el tipo de fase
 C 0x5fec y su tabla de cinco, pegada detras
-B 0x5ff9 MONTAJE DE LA FASE TIPO 1, EL LEON: el decorado de 0x6D97 y, encima, el de 0x7149. Los cinco encabezados de esta tabla van por el INDICE de 0x5FEF, que es (0xE052): 0=trampolin, 1=leon, 2=cuerda floja, 3=bolas, 4=caballo. Se sabe por los volcados de tools/omsx_montaje.tcl, con el tipo forzado y la foto delante.
+B 0x5ff9 MONTAJE DE LA FASE TIPO 1, EL LEON: el decorado de 0x6D97 y, encima, el de 0x7149. Los cinco encabezados de esta tabla van por el INDICE de 0x5FEF, que es (0xE052): 0=trapecio, 1=leon, 2=cuerda floja, 3=bolas, 4=caballo. Se sabe por los volcados de tools/omsx_montaje.tcl, con el tipo forzado y la foto delante.
 B 0x5fff MONTAJE DE LA FASE TIPO 2, LA CUERDA FLOJA: carga el bloque de 0x6547, el de 0x7056 sobre la tabla de color y rellena 256 celdas con el patron 0x60.
 C 0x6002 el destino en la tabla de color
 C 0x600e 256 celdas
@@ -2447,9 +2447,9 @@ B 0x6016 MONTAJE DE LA FASE TIPO 3, LAS BOLAS: el decorado de 0x71D9 y el bloque
 B 0x601f MONTAJE DE LA FASE TIPO 4, EL CABALLO: el decorado de 0x7477, dos bloques y los patrones de sprite de 0x667D en medio.
 C 0x6022 el destino
 C 0x602e y el segundo bloque
-B 0x6034 MONTAJE DE LA FASE TIPO 0, EL TRAMPOLIN: el decorado de 0x753B, el bloque de 0x67A1 y los patrones de sprite de 0x667D.
+B 0x6034 MONTAJE DE LA FASE TIPO 0, EL TRAPECIO (con la cama elastica abajo): el decorado de 0x753B, el bloque de 0x67A1 y los patrones de sprite de 0x667D.
 L 0x6046 pon_a_cero
-C 0x6047 un cero
+C 0x6047 el byte de A: cero si se entra por 0x6046
 C 0x6049 B veces
 L 0x604c limpia_el_estado_de_la_fase
 B 0x604c LIMPIAR EL ESTADO DE LA FASE: 160 bytes a cero desde 0xE130, en dos pasadas de 80, salvando antes la referencia del decorado con el juego alternativo de registros para no perderla.
@@ -2481,7 +2481,7 @@ C 0x60aa una menos
 C 0x60ac la fila 0xA0
 C 0x60ae el tipo de fase
 C 0x60b3 y su tabla de cinco, pegada detras
-B 0x60c0 ARRANQUE DE LA FASE TIPO 0: cuatro moviles a la fila 0x48 y el jugador en (0x85, 0x3C). Si el bit 6 de (0xE002) esta puesto -o sea, ya no estamos en el menu- ademas suena el 0x89.
+B 0x60c0 ARRANQUE DE LA FASE TIPO 1, EL LEON: cuatro moviles -los aros de fuego- a la fila 0x48 y el jugador en (0x85, 0x3C). Si el bit 6 de (0xE002) esta puesto -o sea, ya no estamos en el menu- ademas suena el 0x89. Los cinco encabezados de esta tabla van, como los de 0x5FEF, por el INDICE de 0x60B6: 0x6161 es el tipo 0, 0x60C0 el 1, 0x60F2 el 2, 0x6139 el 3 y 0x6142 el 4. Medido en la RAM de openMSX tras el arranque (tools/omsx_arranque.tcl).
 C 0x60c0 la lista de siete
 C 0x60c9 cuatro moviles
 C 0x60cd a la fila 0x48
@@ -2489,7 +2489,7 @@ C 0x60d2 el estado inicial de los moviles
 C 0x60db el jugador, en su sitio
 C 0x60e6 el bit 6
 C 0x60e9 y el sonido de arranque
-B 0x60f2 ARRANQUE DE LA FASE TIPO 1: coloca el suelto en (0xD0, 0x50) con su plazo de 13 y le pone la rampa de 0x59FA.
+B 0x60f2 ARRANQUE DE LA FASE TIPO 2, LA CUERDA FLOJA: coloca el suelto -el mono- en (0xD0, 0x50) con su plazo de 13 y le pone la rampa de 0x59FA.
 C 0x60f5 el suelto
 C 0x60fe su plazo
 C 0x6100 y su rampa
@@ -2506,14 +2506,14 @@ L 0x6128 baja_los_tres_recogibles
 C 0x6128 los tres primeros recogibles
 C 0x612b uno menos cada uno
 C 0x6132 y su estado inicial
-B 0x6139 ARRANQUE DE LA FASE TIPO 2: el jugador entra en 0x7E, no en 0x3F, y con el mismo dibujo puesto en (0xE18C).
-B 0x6142 ARRANQUE DE LA FASE TIPO 3: engancha el guion de la cola (0x5C8E) en sus DOS punteros -el que avanza y el que guarda el principio- y deja la primera pieza a un cuadro vista.
+B 0x6139 ARRANQUE DE LA FASE TIPO 3, LAS BOLAS: el jugador entra en 0x7E, no en 0x3F, y con el mismo dibujo puesto en (0xE18C).
+B 0x6142 ARRANQUE DE LA FASE TIPO 4, EL CABALLO: engancha el guion de la cola (0x5C8E) en sus DOS punteros -el que avanza y el que guarda el principio- y deja la primera pieza a un cuadro vista.
 C 0x6142 la lista de siete
 C 0x6148 el guion de la cola
 C 0x614b el puntero que avanza
 C 0x614e y el que recuerda el principio
 C 0x6154 la primera pieza, ya
-B 0x6161 ARRANQUE DE LA FASE TIPO 4, la de las dos figuras grandes: el jugador en (0x2E, 0x3C) con el estado 2, la referencia en 0x48 y los cuatro bytes de ritmo de las figuras -0x41, 0x90, 0x83 y 0xA0- puestos a mano.
+B 0x6161 ARRANQUE DE LA FASE TIPO 0, EL TRAPECIO, la de las dos figuras grandes -los dos trapecios que se balancean, por la foto de tools/corre_circus.py-: el jugador en (0x2E, 0x3C) con el estado 2, la referencia en 0x48 y los cuatro bytes de ritmo de las figuras -0x41, 0x90, 0x83 y 0xA0- puestos a mano.
 C 0x6161 el jugador
 C 0x616e estado 2
 C 0x6172 la referencia del decorado
@@ -2631,8 +2631,8 @@ C 0x7bff el numero de sonido
 C 0x7c01 y su partitura, dos bytes
 C 0x7c07 cinco bytes mas alla del estado
 C 0x7c0b las vueltas, a cero
-L 0x753b monta_el_decorado_del_trampolin
-B 0x753b EL DECORADO DEL TRAMPOLIN (tipo 0). Descomprime el bloque de 0x7596 y sigue con `call L_45D1` SIN tocar HL, o sea que lo que hay en 0x7658 es la segunda mitad del mismo bloque. Luego vuelca los MISMOS bytes otra vez por 0x7567, con los bits del reves: la primera mitad a 0x2680 y, siguiendo por donde dejo la primera llamada, la segunda a 0x25C0. Y 1.152 celdas de 0xF0 y el tercio 0 al 1.
+L 0x753b monta_el_decorado_del_trapecio
+B 0x753b EL DECORADO DEL TRAPECIO (tipo 0). Descomprime el bloque de 0x7596 y sigue con `call L_45D1` SIN tocar HL, o sea que lo que hay en 0x7658 es la segunda mitad del mismo bloque. Luego vuelca los MISMOS bytes otra vez por 0x7567, con los bits del reves: la primera mitad a 0x2680 y, siguiendo por donde dejo la primera llamada, la segunda a 0x25C0. Y 1.152 celdas de 0xF0 y el tercio 0 al 1.
 C 0x753e el primer bloque
 C 0x7541 y el segundo, pegado detras
 C 0x7544 la tira de indices
@@ -2770,7 +2770,7 @@ L 0x578e vuelca_franja_con_referencias
 L 0x5bc0 pinta_pieza_de_dos_filas
 L 0x6019 carga_el_bloque_6547
 L 0x603d carga_los_sprites_667D
-L 0x6047 pon_b_bytes_a_cero
+L 0x6047 rellena_b_bytes_con_a
 
 
 # ======================================================================

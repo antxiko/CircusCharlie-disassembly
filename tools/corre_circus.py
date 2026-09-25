@@ -2,8 +2,8 @@
 """EL CARTUCHO ENTERO, CORRIENDO EN PYTHON: de INIT a la partida sin emulador.
 
 Por que. Las cinco atracciones montadas por tools/graficos.py son solo el
-decorado: Charlie, su animal, los aros, los monos, las bolas y los trampolines
-los pone el juego cuadro a cuadro. Reescribir a mano esa logica seria adivinar;
+decorado: Charlie, su animal, los aros, los monos, las bolas y lo que salta el
+caballo los pone el juego cuadro a cuadro. Reescribir a mano esa logica seria adivinar;
 ejecutarla no lo es. Aqui corre el codigo del propio cartucho sobre el Z80
 pequeno de tools/z80run.py (el mismo que monto el mapa de Super Cobra).
 
