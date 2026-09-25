@@ -125,6 +125,11 @@ ARRANQUE = work/arranque
 coteja_arranque: $(ROM)
 	@python3 tools/coteja_arranque.py $(ROM) $(ARRANQUE)
 
+# LAS CINCO EN PISTA: tools/pista.py, el cuadro de partida desde las tablas,
+# contra los mismos volcados: RAM de estado, VRAM y sprites, a cero bytes.
+coteja_pista: $(ROM)
+	@python3 tools/coteja_pista.py $(ROM) $(ARRANQUE)
+
 # LA WEB
 #
 # Bilingue: el ingles en docs/ y el castellano en docs/es/. Las paginas se
@@ -141,4 +146,4 @@ clean:
 	rm -rf $(WORK)/circus.trace.json $(WORK)/circus.blocks
 
 .PHONY: all comprueba trace listado verify sanity test densidad imagenes \
-        pares coteja web clean montaje coteja_montaje coteja_arranque
+        pares coteja web clean montaje coteja_montaje coteja_arranque \n        coteja_pista

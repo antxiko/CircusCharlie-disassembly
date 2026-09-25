@@ -879,40 +879,12 @@ def sprites(v, base, fn, n=16, cols=8, esc=3):
     png(w, h, px, fn)
 
 
-# El cuadro de cada foto en pista, contado desde el montaje (0x4C3C) en los
-# vuelcos de sprites de 0x4CA9, con la flecha derecha pulsada: el instante en
-# que se ve mejor el obstaculo de cada numero.
-EN_PISTA = (100, 100, 150, 350, 50)
-
-
-def en_pista(rom, tipo, cuadros, teclas=0x80):
-    """La VRAM del cartucho EN MARCHA, `cuadros` despues del montaje."""
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from corre_circus import Circus, MONTADA, VUELCA_LOS_SPRITES
-    m = Circus(rom)
-    m.tipo = tipo
-    m.arranca()
-    cuenta = [-1]
-
-    def montada(z):
-        cuenta[0] = 0
-
-    def vuelca(z):
-        if cuenta[0] >= 0:
-            cuenta[0] += 1
-
-    m.paradas[MONTADA] = montada
-    m.paradas[VUELCA_LOS_SPRITES] = vuelca
-    f = 0
-    while cuenta[0] < 0:                  # el menu: espacio a golpes
-        m.espacio = (f % 100) < 20
-        m.cuadro()
-        f += 1
-    m.espacio = False
-    m.teclas = {8: teclas}
-    while cuenta[0] < cuadros:
-        m.cuadro()
-    return bytes(m.vdp.vram), list(m.vdp.regs)
+# El cuadro de cada foto en pista, contado en vuelcos de sprites (0x4CA9) desde
+# el montaje y sin tocar el mando. Son cuadros que tools/omsx_arranque.tcl
+# vuelca, asi que cada foto es un instante cotejado contra openMSX
+# (tools/coteja_pista.py): el 100 en todas salvo las bolas, que en el 200
+# llevan ya tres en pista.
+EN_PISTA = (100, 100, 100, 200, 100)
 
 
 def main():
@@ -957,14 +929,16 @@ def main():
         pantalla_entera(v, os.path.join(sal, "atraccion-%d-%s.png" % (tipo, nombre)))
 
     # Y LAS CINCO EN PISTA, con Charlie, su animal y los obstaculos. Esos no
-    # los pone el montaje sino el juego cuadro a cuadro, asi que se EJECUTA el
-    # cartucho (tools/corre_circus.py) y se fotografia su VRAM en el cuadro
-    # elegido. Cotejado contra openMSX en tools/coteja_arranque.py: 0 bytes.
+    # los pone el montaje sino el cuadro de partida, y tools/pista.py lo lleva
+    # cuadro a cuadro desde las tablas del cartucho: los arranques de 0x60B6,
+    # las poses de 0x5116/0x513D/0x5155, los moviles de 0x54C5/0x5A6F, el
+    # guion de la cola de 0x5C8E, las poses del trapecio... Cotejado contra
+    # openMSX en tools/coteja_pista.py: 0 bytes.
+    import pista as P
+    import vram as V
     for tipo, nombre in enumerate(ATRACCIONES):
-        v, regs = en_pista(rom, tipo, EN_PISTA[tipo])
-        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-        import vram as V
-        px = V.pantalla(v, regs, con_sprites=True)
+        p = P.en_pista(rom, tipo, EN_PISTA[tipo])
+        px = V.pantalla(bytes(p.vram_vista()), VDP, con_sprites=True)
         png(256, 192, px, os.path.join(sal, "en-pista-%d-%s.png" % (tipo, nombre)))
 
     for f in sorted(os.listdir(sal)):

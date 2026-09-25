@@ -616,7 +616,30 @@ class SinNombresDeOtroJuego(unittest.TestCase):
 
 
 class LasAtraccionesEnPista(unittest.TestCase):
-    """Las cinco fotos en pista existen y salen del cartucho EJECUTADO."""
+    """Las cinco fotos en pista existen y salen de tools/pista.py, que lleva
+    el cuadro de partida desde las tablas del cartucho, no de ejecutarlo."""
+
+    def test_las_imagenes_no_ejecutan_el_cartucho(self):
+        with open(os.path.join(RAIZ, "tools", "graficos.py"),
+                  encoding="utf-8") as f:
+            g = f.read()
+        with open(os.path.join(RAIZ, "tools", "pista.py"),
+                  encoding="utf-8") as f:
+            p = f.read()
+        for fuente in (g, p):
+            self.assertNotIn("import corre_circus", fuente)
+            self.assertNotIn("from corre_circus", fuente)
+            self.assertNotIn("z80run", fuente.replace("tools/z80run.py", ""))
+
+    def test_el_caballo_en_el_cuadro_100(self):
+        """Lo que pista.py deja en el cuadro 100 del caballo, medido en
+        openMSX (work/arranque/tipo_4_c100): la velocidad 0x50, dos vallas en
+        pista y Charlie en su sitio."""
+        import pista
+        p = pista.en_pista(lee(), 4, 100)
+        self.assertEqual(p[0xE270], 0x50)
+        self.assertEqual(sum(1 for i in range(4) if p[0xE25C + 4 * i]), 2)
+        self.assertEqual((p[0xE130], p[0xE131]), (0x85, 0x3C))
 
     def test_las_cinco_estan_publicadas(self):
         import graficos

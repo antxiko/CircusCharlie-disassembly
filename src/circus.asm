@@ -367,21 +367,21 @@ L_41D3:
 	jr plazo_de_32_y_siguiente_escena		;41d8
 
 ; ----------------------------------------------------------------------
-; ESCENA 10: prepara la bonificacion y el numero de fase. El 0x5000 de (0xE057) NO es una direccion: es el valor 5000 en BCD, que es la bonificacion con la que se entra en la fase y que 0x5290 va restando de 16 en 16.
+; ESCENA 10: prepara la bonificacion y el punto de salida en la pista. El 0x5000 de (0xE057) NO es una direccion: es el valor 5000 en BCD, que es la bonificacion con la que se entra en la fase y que 0x5290 va restando de 16 en 16.
 ; ----------------------------------------------------------------------
 prepara_la_bonificacion:
 	ld hl,05000h		;41da   ; cinco mil, en BCD
 	ld (0e057h),hl		;41dd   ; la bonificacion vive en (0xE057)
-	ld hl,0e055h		;41e0   ; y el numero de fase, en (0xE056)
-	ld (hl),0ffh		;41e3   ; 0xFF en (0xE055): el contador de fase arranca desbordado
+	ld hl,0e055h		;41e0   ; y la posicion en la pista, la palabra de (0xE055)
+	ld (hl),0ffh		;41e3   ; 0xFF en el byte bajo: se vuelve a salir desde el principio de su tramo
 	inc hl			;41e5
 	ld a,(hl)			;41e6
-	cp 009h		;41e7   ; de la fase 9 en adelante ya no sube
+	cp 009h		;41e7   ; el byte alto se conserva de 1 a 8: se vuelve a salir desde el mismo tramo
 	jr nc,L_41EE		;41e9
 	or a			;41eb
-	jr nz,L_41F0		;41ec   ; y si estaba a cero, se empieza por la 1
+	jr nz,L_41F0		;41ec   ; y si estaba a cero, se sale desde el 1
 L_41EE:
-	ld (hl),001h		;41ee   ; la fase 1, tanto si venia a cero como si venia del tope
+	ld (hl),001h		;41ee   ; el 1, tanto si venia a cero como si venia de 9 o mas
 L_41F0:
 	ld a,(0e050h)		;41f0   ; quedan vidas?
 	or a			;41f3
@@ -557,7 +557,7 @@ L_42EC:
 L_42ED:
 	ld a,(0e05bh)		;42ed   ; el decorado que toca
 	ld (0e05ah),a		;42f0   ; y el que se va a montar
-	ld a,006h		;42f3   ; la fase 6
+	ld a,006h		;42f3   ; seis en el byte alto de la posicion: la pista entera, la del cartel de 60 m
 	ld (0e056h),a		;42f5
 	ld hl,08000h		;42f8   ; y la bonificacion de las fases largas: 8000, tambien en BCD
 	ld (0e057h),hl		;42fb
@@ -1717,8 +1717,8 @@ mascara_38:
 ; QUITARLE TECLAS AL JUGADOR SEGUN LA FASE. Recorta con un `and` lo que se leyo del mando -a 0x34 o a 0x38- de modo que en unas fases no se puede saltar o no se puede ir hacia atras. Y lo recorta en los dos sitios: en la lectura de este cuadro y en (0xE138).
 ; ----------------------------------------------------------------------
 limita_los_mandos:
-	ld a,(0e056h)		;4c51   ; el numero de fase
-	cp 008h		;4c54   ; de la 8 en adelante, la mascara ancha
+	ld a,(0e056h)		;4c51   ; el byte alto de la posicion en la pista (0xE055 es una palabra: la leen y la escriben 0x536F, 0x5475, 0x5643 y 0x5687)
+	cp 008h		;4c54   ; de 8 en adelante, la mascara ancha
 	jr nc,mascara_38		;4c56
 	ld a,(0e14ch)		;4c58   ; y si no, tambien depende de por donde vaya
 	cp 014h		;4c5b   ; la fase 0 solo recorta a partir de la posicion 0x14
@@ -1999,8 +1999,8 @@ L_4DFC:
 fase_4_el_suelo:
 	cp 004h		;4dfe
 	jr nz,fase_0_el_salto_al_aro		;4e00
-	ld a,(0e056h)		;4e02   ; el numero de fase
-	cp 008h		;4e05   ; de la octava en adelante, directo
+	ld a,(0e056h)		;4e02   ; el byte alto de la posicion en la pista (0xE055 es una palabra: la leen y la escriben 0x536F, 0x5475, 0x5643 y 0x5687)
+	cp 008h		;4e05   ; de 8 en adelante, directo
 	jr nc,aterriza		;4e07
 	or a			;4e09   ; la fase 0 tiene su propia regla
 	jr nz,se_queda_donde_estaba		;4e0a
@@ -2399,7 +2399,7 @@ L_5095:
 L_50A4:
 	pop af			;50a4
 	ld d,a			;50a5
-	add a,a			;50a6   ; y por ocho para la fase 1, que gasta el doble
+	add a,a			;50a6   ; y por SIETE en la fase 1 -por ocho y menos una vez-: siete patrones por pose, los de Charlie y los del leon
 	add a,a			;50a7
 	add a,a			;50a8
 	sub d			;50a9
@@ -3439,7 +3439,7 @@ mete_un_sprite:
 	ret			;5642
 
 ; ----------------------------------------------------------------------
-; PINTAR LO QUE VA ENTRANDO POR EL BORDE. Solo se hace cuando el byte alto de la posicion del decorado es cero, o sea en la primera pantalla; el dibujo -3x8 o 3x7- lo elige 0x57A8. Cuando no toca, la posicion se marca con 0xFF.
+; PINTAR LO QUE VA ENTRANDO POR EL BORDE. Solo se hace cuando el byte alto de la posicion en la pista es cero, o sea en su ultimo tramo: la posicion va BAJANDO desde 0x06FF; el dibujo -3x8 o 3x7- lo elige 0x57A8. Cuando no toca, la posicion se marca con 0xFF.
 ; ----------------------------------------------------------------------
 pinta_el_borde_del_decorado:
 	ld hl,(0e055h)		;5643   ; la posicion del decorado
@@ -4196,9 +4196,9 @@ DATA_pares_5A6F:
 ; LA COLA DE COSAS QUE VAN SALIENDO. (0xE26E) es lo que falta para la siguiente y se descuenta cada cuadro; cuando pasa de cero, se busca un hueco libre entre CUATRO y se rellena leyendo cuatro bytes del guion. Al llegar a un 0xFF, el guion vuelve al principio con el puntero guardado en (0xE25A).
 ; ----------------------------------------------------------------------
 saca_la_siguiente_de_la_cola:
-	ld a,(0e056h)		;5aaf   ; el numero de fase
+	ld a,(0e056h)		;5aaf   ; el byte alto de la posicion en la pista
 	or a			;5ab2
-	ret z			;5ab3   ; en el titulo no hay cola
+	ret z			;5ab3   ; con el byte alto a cero ya no sale ninguna pieza
 	ld hl,0e26eh		;5ab4   ; lo que falta para la siguiente
 	ld a,(hl)			;5ab7
 	sub c			;5ab8   ; se descuenta
@@ -4288,9 +4288,9 @@ avanza_con_la_velocidad:
 	push bc			;5b2c   ; se guarda el avance
 	call pinta_la_figura_grande		;5b2d   ; se repinta la figura grande
 	pop bc			;5b30   ; se recupera
-	ld a,(0e056h)		;5b31   ; el numero de fase
-	or a			;5b34   ; la del titulo es la cero
-	jr nz,L_5B42		;5b35   ; en el titulo no hay segunda capa
+	ld a,(0e056h)		;5b31   ; el byte alto de la posicion en la pista
+	or a			;5b34   ; con el byte alto a cero
+	jr nz,L_5B42		;5b35   ; y si no es cero no hay segunda capa
 	ld hl,0e14ch		;5b37   ; la segunda referencia
 	ld a,(hl)			;5b3a   ; leida
 	sub c			;5b3b   ; la otra referencia tambien se corre
@@ -4779,10 +4779,10 @@ borra_la_franja_de_abajo:
 	ld bc,00100h		;5dfa   ; 256 celdas
 	xor a			;5dfd
 	call rellena_vram		;5dfe
-	ld a,(0e056h)		;5e01   ; el numero de fase
+	ld a,(0e056h)		;5e01   ; el byte alto de la posicion en la pista
 	or a			;5e04
 	jr nz,pinta_las_dos_figuras		;5e05
-	ld a,(0e055h)		;5e07   ; en el titulo, la referencia es la del decorado
+	ld a,(0e055h)		;5e07   ; con el a cero, la referencia es la de la posicion
 	ld (0e14ch),a		;5e0a
 	call pinta_la_columna_que_entra		;5e0d
 
@@ -5201,7 +5201,7 @@ L_6086:
 	ld a,(hl)			;6086
 	cp 0c3h		;6087   ; los que estan fuera de pantalla no se tocan
 	jr z,L_608E		;6089
-	add a,058h		;608b   ; y a los demas, 0x58 al patron
+	add a,058h		;608b   ; y a los demas, 0x58 a la FILA: el byte que se mira y se toca es el primero de cada cuatro
 	ld (hl),a			;608d
 L_608E:
 	inc hl			;608e   ; cuatro bytes por sprite
