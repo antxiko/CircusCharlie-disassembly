@@ -847,8 +847,8 @@ C 0x4582 byte a byte
 C 0x458a la segunda vuelta del contador largo
 L 0x458f copia_vram_a_vram
 B 0x458f COPIAR DE VRAM A VRAM, byte a byte y pasando por el Z80: el VDP no sabe hacerlo solo, asi que cada byte se lee por un puerto y se escribe por el otro.
-C 0x458f lee de (HL) en la VRAM
-C 0x4593 y escribe en (DE), tambien en la VRAM
+C 0x458f lee de (DE) en la VRAM: las rutinas de 0x4010 trabajan con DE
+C 0x4593 y escribe en lo que traia HL, tambien en la VRAM
 C 0x4599 una menos
 L 0x459f duplica_los_tercios_de_patrones
 B 0x459f EL REPARTO DE LA VRAM, QUE HAY QUE LEER EN LOS REGISTROS Y NO EN LAS DIRECCIONES. Los ocho valores de 0x4722 son `02 E2 0E 7F 07 76 03 E1`, y en SCREEN 2 el R3 y el R4 no son direcciones sino base y mascara: del R3=0x7F solo cuenta el bit 7, que esta a CERO, o sea que la tabla de COLOR va en 0x0000; del R4=0x07 solo cuenta el bit 2, que esta puesto, o sea que la de PATRONES va en 0x2000. Asi que esta rutina duplica los PATRONES y la de 0x45B3 el COLOR, al reves de lo que parece. Lo confirma el propio cartucho dos lineas mas arriba: 0x434A manda "los patrones del titulo" a 0x3600 -tabla de patrones- y 0x4350 su color a 0x1600 -tabla de color-, y las dos direcciones son la misma celda de tercios distintos.
@@ -912,8 +912,8 @@ C 0x4638 y a la VRAM
 C 0x463b retroceso de ocho: el mismo patron otra vez
 C 0x4640 hasta completar las N copias
 C 0x4642 y ahora si, el patron siguiente
-L 0x4647 transpone_patrones
-B 0x4647 GIRAR LOS PATRONES DEL BUFER. El bucle de 0x4663 es una transposicion: saca el bit de arriba de cada uno de los ocho bytes y con ellos arma un byte nuevo, ocho veces. Eso vuelca un dibujo de 8x8 sobre su diagonal, que es como se consiguen las poses giradas sin guardarlas aparte.
+L 0x4647 espeja_patrones
+B 0x4647 ESPEJAR LOS PATRONES DEL BUFER. El bucle de 0x4663 hace `rlc (hl) / rra` ocho veces sobre el MISMO byte: saca sus ocho bits por arriba y los mete en A por la derecha, o sea que le da la vuelta al byte. Fila a fila, eso es el ESPEJO horizontal del dibujo, no una transposicion. Los patrones salen de 0xE280 + (C & 7) * 8 y van a 0xE288 + (C & 0x38), cada uno dieciseis bytes mas abajo (+0xF0 y `dec d`), tantos como digan los dos bits altos de C.
 C 0x4648 dos giros a la izquierda: el par de bits de arriba manda
 C 0x464c los bits 3 a 5 eligen la fila de destino
 C 0x464e el bufer de salida
@@ -927,7 +927,7 @@ C 0x4667 se va metiendo en A por la derecha
 C 0x466a el byte armado
 C 0x4670 +0xF0 y `dec d`: retrocede dieciseis, o sea la fila de arriba
 L 0x467b prepara_la_figura
-B 0x467b PREPARAR UNA FIGURA EN EL BUFER. B dice a que altura del bufer se trabaja (por ocho) y C trae dos cosas: en los dos bits de arriba, si hay que girarla, y en el resto, la variante. La copia de ida y vuelta por 0xE378 es un hueco de paso para no pisar lo que se esta leyendo.
+B 0x467b PREPARAR UNA FIGURA EN EL BUFER, y se hace ANTES de pintarlo: lo que pinta_el_bufer lee despues es esto. B es la altura en patrones y C trae dos cosas: con CUALQUIERA de sus dos bits altos puesto (`and 0c0h / call nz`) el dibujo se espeja, y los seis de abajo dicen de donde a donde. Y siempre, tres pasadas: cada COLUMNA del dibujo -el byte j de cada uno de los B patrones- pasa por el hueco de 0xE378, se desplaza dos bits y vuelve una altura mas arriba, asi que el bufer queda con el dibujo y tres copias movidas dos, cuatro y seis pixeles. Es de donde 0x5770 saca el patron 0x51.
 C 0x467b la altura, por ocho
 C 0x467f se guarda para el resto de la rutina
 C 0x4685 y ahi cae dentro del bufer
@@ -1791,7 +1791,7 @@ C 0x56f8 treinta a la derecha
 C 0x5700 nueve mas
 C 0x5708 y de vuelta al principio
 L 0x5711 vuelca_la_figura
-B 0x5711 VOLCAR LA FIGURA A LA VRAM, por franjas. Se pintan seis filas de treinta y dos y luego seis grupos de cinco, y cada vez que la columna cruza el borde (`and 01fh`) se llama a 0x57B0, que salta a la fila de abajo.
+B 0x5711 VOLCAR LA FIGURA A LA VRAM, por franjas. Se pintan treinta y dos celdas desde la columna 0x15, luego seis filas de cinco con referencias, seis tal cual y seis con referencias, y dos franjas de quince; y cada vez que la columna cruza el borde (`and 01fh`) se llama a 0x57B0, que vuelve al principio de la MISMA fila: la figura da la vuelta dentro de la fila. Al final, un patron del bufer de 0xE280 -el que elige el ultimo indice leido- va al 0x51.
 C 0x5712 la marca de escritura del VDP
 C 0x5716 treinta y dos celdas
 C 0x571d seis grupos
@@ -1848,10 +1848,10 @@ C 0x5790 si no lo es, se vuelca tal cual
 C 0x5777 el tipo de fase decide si hay una segunda copia
 C 0x577d la fila de la otra copia
 L 0x578b vuelca_con_referencias
-B 0x578b VOLCAR UNA FRANJA CON REFERENCIAS. Aqui el cero NO es un indice de patron: es una marca que dice "el trozo que va aqui esta en otro sitio", y el byte siguiente es el desplazamiento hacia atras (`suma_a_a_hl / dec h`, o sea restar). Es una compresion por diccionario metida dentro del propio dibujo, y por eso un decorado largo cabe en tan poco.
+B 0x578b VOLCAR UNA FRANJA CON REFERENCIAS. Aqui el cero NO es un indice de patron: es una marca que dice "sigue por otro sitio", y el byte siguiente es cuanto RETROCEDER (`suma_a_a_hl / dec h`, o sea restar). A partir de ahi se sigue leyendo desde el sitio nuevo -el `inc hl` de 0x5799 avanza el puntero ya movido-: es un salto atras en los datos, y por eso un decorado largo cabe en tan poco.
 C 0x578e el indice
 C 0x578f cero: es una referencia
-C 0x5793 el desplazamiento
+C 0x5793 cuanto retroceder: el puntero se queda ahi
 C 0x5797 hacia atras
 C 0x5798 y de ahi sale el indice de verdad
 C 0x579b al VDP
@@ -1860,8 +1860,8 @@ C 0x57a2 final de fila: a la de abajo
 L 0x57a8 que_dibujo_toca
 C 0x57a8 el tipo de fase
 C 0x57ad cero o dos: las que llevan el otro dibujo
-L 0x57b0 baja_una_fila
-C 0x57b0 treinta y dos celdas menos una pagina
+L 0x57b0 vuelve_al_principio_de_la_fila
+C 0x57b0 0xE0 y una pagina menos: el puntero, que acaba de pasar de la columna 31, vuelve al principio de LA MISMA fila
 L 0x57b3 avanza_sin_salir_de_la_fila
 B 0x57b3 AVANZAR EL PUNTERO DE VRAM SIN SALIRSE DE LA FILA. Parte el desplazamiento en su trozo de fila (`and 01fh`) y su trozo de columna, los suma por separado y los vuelve a juntar: asi un avance grande no se lleva por delante el principio de la fila de abajo.
 C 0x57b5 la parte de columna
@@ -2438,16 +2438,16 @@ C 0x5fe2 lo comun a todas las fases
 C 0x5fe5 el remate, apilado a mano
 C 0x5fe9 el tipo de fase
 C 0x5fec y su tabla de cinco, pegada detras
-B 0x5ff9 MONTAJE DE LA FASE TIPO 0.
-B 0x5fff MONTAJE DE LA FASE TIPO 1: carga su bloque y rellena 256 celdas con el patron 0x60.
+B 0x5ff9 MONTAJE DE LA FASE TIPO 1, EL LEON: el decorado de 0x6D97 y, encima, el de 0x7149. Los cinco encabezados de esta tabla van por el INDICE de 0x5FEF, que es (0xE052): 0=trampolin, 1=leon, 2=cuerda floja, 3=bolas, 4=caballo. Se sabe por los volcados de tools/omsx_montaje.tcl, con el tipo forzado y la foto delante.
+B 0x5fff MONTAJE DE LA FASE TIPO 2, LA CUERDA FLOJA: carga el bloque de 0x6547, el de 0x7056 sobre la tabla de color y rellena 256 celdas con el patron 0x60.
 C 0x6002 el destino en la tabla de color
 C 0x600e 256 celdas
 C 0x6011 con el patron 0x60
-B 0x6016 MONTAJE DE LA FASE TIPO 2.
-B 0x601f MONTAJE DE LA FASE TIPO 3: dos bloques y el relleno de en medio.
+B 0x6016 MONTAJE DE LA FASE TIPO 3, LAS BOLAS: el decorado de 0x71D9 y el bloque de 0x6547.
+B 0x601f MONTAJE DE LA FASE TIPO 4, EL CABALLO: el decorado de 0x7477, dos bloques y los patrones de sprite de 0x667D en medio.
 C 0x6022 el destino
 C 0x602e y el segundo bloque
-B 0x6034 MONTAJE DE LA FASE TIPO 4.
+B 0x6034 MONTAJE DE LA FASE TIPO 0, EL TRAMPOLIN: el decorado de 0x753B, el bloque de 0x67A1 y los patrones de sprite de 0x667D.
 L 0x6046 pon_a_cero
 C 0x6047 un cero
 C 0x6049 B veces
@@ -2551,12 +2551,12 @@ C 0x69e8 por ocho
 C 0x69ec la marca de escritura
 C 0x69f2 el bufer de 0xE280
 L 0x69fb pinta_el_bufer_con_ajuste
-B 0x69fb LA OTRA PUERTA: la pagina es fija (5) y cada fila trae ADEMAS un byte de ajuste que se le suma al destino. Es lo que permite pintar filas que no empiezan en la misma columna.
+B 0x69fb LA OTRA PUERTA: la pagina es fija (5) y cada fila trae ADEMAS un byte que se suma al puntero del BUFER, no al destino: se suma DESPUES del `ld de,0e280h` de 0x6A0D. Es lo que permite que una fila se pinte desde otro patron del mismo trozo.
 C 0x69ff el numero de fila
 C 0x6a00 la pagina, fija
 C 0x6a07 la marca de escritura
 C 0x6a10 el ajuste de esta fila
-C 0x6a12 sumado al destino
+C 0x6a12 sumado al puntero del bufer, que es lo que hay en DE desde 0x6A0D
 L 0x6a1a vuelca_por_mascaras
 B 0x6a1a EL VOLCADO POR MASCARAS, que es lo mas bonito de este montaje: cada byte del guion es una MASCARA DE OCHO BITS y cada bit dice si el patron que toca del bufer se escribe o se salta. Con un byte se deciden ocho patrones, y por eso se puede repintar media pantalla sin tocar la otra media.
 C 0x6a1a la mascara
@@ -2631,8 +2631,8 @@ C 0x7bff el numero de sonido
 C 0x7c01 y su partitura, dos bytes
 C 0x7c07 cinco bytes mas alla del estado
 C 0x7c0b las vueltas, a cero
-L 0x753b monta_el_decorado_de_la_fase_4
-B 0x753b EL MONTAJE DE LA FASE TIPO 4. Descomprime el bloque de 0x7596 y sigue con `call L_45D1` SIN tocar HL, o sea que lo que hay en 0x7658 es la segunda mitad del mismo bloque. Luego vuelca la tira de 0x7598 a dos sitios y rellena el resto.
+L 0x753b monta_el_decorado_del_trampolin
+B 0x753b EL DECORADO DEL TRAMPOLIN (tipo 0). Descomprime el bloque de 0x7596 y sigue con `call L_45D1` SIN tocar HL, o sea que lo que hay en 0x7658 es la segunda mitad del mismo bloque. Luego vuelca los MISMOS bytes otra vez por 0x7567, con los bits del reves: la primera mitad a 0x2680 y, siguiendo por donde dejo la primera llamada, la segunda a 0x25C0. Y 1.152 celdas de 0xF0 y el tercio 0 al 1.
 C 0x753e el primer bloque
 C 0x7541 y el segundo, pegado detras
 C 0x7544 la tira de indices
@@ -2670,13 +2670,13 @@ C 0x6a9d y la fila de abajo, 32 celdas
 # ======================================================================
 # COMENTARIOS DE LINEA
 # ======================================================================
-L 0x7477 monta_el_decorado_de_la_fase_3
-B 0x7477 EL MONTAJE DE LA FASE TIPO 3. Tras la escena, COPIA UN TROZO DE VRAM SOBRE OTRO (0x2BB0 a 0x2AC0, 720 bytes) en vez de volver a descomprimirlo: el decorado se repite y se duplica ahi mismo.
+L 0x7477 monta_el_decorado_del_caballo
+B 0x7477 EL DECORADO DEL CABALLO (tipo 4). Tras la escena, COPIA UN TROZO DE VRAM SOBRE OTRO -720 bytes de 0x2AC0 sobre 0x2BB0- en vez de volver a descomprimirlo. Y como se copia hacia delante y el destino esta 240 bytes por delante del origen, lo copiado se vuelve a leer: el decorado se repite cada 240 bytes, treinta patrones. Se lee por DE y se escribe por HL (las dos rutinas de 0x4010 trabajan con DE, y el `ex de,hl` cambia los papeles).
 C 0x747d el destino de las listas de patrones
 C 0x7486 el trozo que ya esta puesto
 C 0x7489 720 bytes de VRAM a VRAM
-L 0x6d97 monta_el_decorado_de_la_fase_1
-B 0x6d97 EL MONTAJE DE LA FASE TIPO 1: la escena por la puerta con ajuste, y luego DOS tandas de patrones volcadas CUATRO veces cada una con el mismo puntero, que es lo que repite el motivo por toda la franja.
+L 0x6d97 monta_el_decorado_del_leon
+B 0x6d97 EL DECORADO DEL LEON (tipo 1): la escena por la puerta con ajuste, y luego DOS tandas de patrones volcadas CUATRO veces cada una con el mismo puntero, que es lo que repite el motivo por toda la fila.
 C 0x6d9d el destino
 C 0x6da3 la primera tanda, cuatro veces
 C 0x6da9 y la segunda, otras cuatro
@@ -2768,8 +2768,8 @@ L 0x5655 pinta_la_columna_que_entra
 L 0x5687 corre_el_decorado_bc
 L 0x578e vuelca_franja_con_referencias
 L 0x5bc0 pinta_pieza_de_dos_filas
-L 0x6019 carga_el_fondo_de_la_fase_1
-L 0x603d carga_el_fondo_de_la_fase_3
+L 0x6019 carga_el_bloque_6547
+L 0x603d carga_los_sprites_667D
 L 0x6047 pon_b_bytes_a_cero
 
 
@@ -2779,7 +2779,7 @@ L 0x6047 pon_b_bytes_a_cero
 L 0x61ab reparte_la_lista_de_siete
 L 0x69c8 elige_el_decorado_alterno
 L 0x6db5 vuelca_la_tanda_cuatro_veces
-L 0x71d9 monta_el_decorado_de_la_fase_2
+L 0x71d9 monta_el_decorado_de_las_bolas
 L 0x72e1 monta_la_franja_de_abajo
 L 0x758b recorta_el_indice
 L 0x7a34 escribe_el_mezclador_del_psg
@@ -2886,7 +2886,7 @@ C 0x4545 el byte bajo ya es la celda: no hay que sumar nada mas
 C 0x4553 la celda de delante del rotulo
 C 0x456d BC a cero se mira en dos pasos, que el `dec bc` no toca banderas
 C 0x4571 el relleno entro con `di`; aqui se abre
-C 0x4592 los dos punteros se turnan: HL lee y DE escribe
+C 0x4592 los dos punteros se turnan: DE lee y HL escribe
 C 0x459a igual aqui: el `dec bc` no levanta el cero
 C 0x45d4 la cuenta, apartada en C
 C 0x45d5 y el byte otra vez entero, que su bit 7 es lo que decide la rama

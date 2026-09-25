@@ -32,7 +32,8 @@ bufer se escriben de verdad. Es lo que permite repintar media pantalla sin
 tocar la otra media.
 
 0x69FB es la misma idea con la pagina fija (D=5) y un byte mas por fila, que
-suma al destino con L_4027.
+se suma al puntero del BUFER (`ld de,0e280h` y luego L_4027): la fila se pinta
+desde ese byte del trozo, no desde el principio.
 
 Uso: escenas.py <rom> <org> --desde 0x6BE3 [42|33]
      escenas.py <rom> <org> <listado.asm>
@@ -156,6 +157,71 @@ if __name__ == "__main__":
 
 
 # ---------------------------------------------------------------- MONTAR
+# EL BUFER DE 0xE280 ES RAM, Y SE QUEDA CON LO QUE HABIA. Cada trozo se
+# descomprime encima desde el principio, pero lo que el trozo no cubre sigue
+# ahi; y prepara_la_figura (0x467B) escribe DENTRO del bufer antes de que se
+# pinte: el espejo del dibujo si C lleva alguno de sus dos bits altos, y
+# siempre tres copias desplazadas dos, cuatro y seis pixeles, una altura mas
+# arriba cada una. Como pinta_el_bufer lee el bufer DESPUES, esas copias son
+# lo que se ve. Y 0x5770 saca de aqui, ya acabada la escena de 0x6D0A, el
+# patron 0x51 con el desplazamiento que toque.
+BUFER = bytearray(0x400)
+PAREJAS = []
+
+
+def rota_el_bufer_un_bit(hueco, b):
+    """0x46E1: los B bytes del hueco, de atras hacia delante, un bit a la
+    izquierda con el acarreo encadenado; lo que sale por la izquierda del
+    primero entra por la derecha del ultimo (`dec hl / inc (hl)`)."""
+    acarreo = 0
+    for i in range(b - 1, -1, -1):
+        viejo = hueco[i]
+        hueco[i] = ((viejo << 1) | acarreo) & 0xFF
+        acarreo = viejo >> 7
+    if acarreo:
+        hueco[b - 1] = (hueco[b - 1] + 1) & 0xFF
+
+
+def espeja_patrones(buf, c):
+    """0x4647 (bautizado transpone_patrones, pero lo que hace es un ESPEJO):
+    de cada byte saca los ocho bits del reves (`rlc (hl) / rra` ocho veces),
+    o sea que da la vuelta a cada fila; los patrones salen de
+    0xE280 + (C & 7) * 8 y van a 0xE288 + (C & 0x38), y cada uno siguiente
+    16 bytes mas ABAJO (+0xF0 y `dec d`), tantos como digan los dos bits de
+    arriba de C."""
+    cuantos = c >> 6                              # A = C & 0xC0, rlca / rlca
+    de = 8 + (c & 0x38)
+    hl = (c & 0x07) * 8
+    for _ in range(cuantos):
+        for k in range(8):
+            if de + k >= 0:                       # por debajo de 0xE280 no es el bufer
+                buf[de + k] = int("{:08b}".format(buf[hl + k])[::-1], 2)
+        hl += 8
+        de -= 8                                   # +8 escritos, -16
+
+
+def prepara_la_figura(buf, b, c):
+    """0x467B: B es la altura en patrones y C trae el espejo (bits 7-6) y la
+    variante. Se saca cada COLUMNA del dibujo -el byte j de cada uno de los B
+    patrones- al hueco de paso, se desplaza dos bits tres veces y cada pasada
+    se deja una altura mas arriba: copias del dibujo movido 2, 4 y 6 pixeles.
+    """
+    altura = (b * 8) & 0xFF
+    if c & 0xC0:
+        espeja_patrones(buf, c)
+    hueco = bytearray(0x40)
+    for j in range(8):                            # ocho patrones (columnas)
+        for k in range(b):
+            hueco[k] = buf[j + 8 * k]
+        iy = altura + j
+        for _ in range(3):                        # gira_tres_veces
+            rota_el_bufer_un_bit(hueco, b)        # desplaza_el_bufer: dos
+            rota_el_bufer_un_bit(hueco, b)
+            for k in range(b):
+                buf[iy + 8 * k] = hueco[k]
+            iy += altura
+
+
 def monta(rom, org, ini, vram, variante=0x42):
     """Ejecuta la escena DE VERDAD, escribiendo en la VRAM.
 
@@ -186,12 +252,18 @@ def monta(rom, org, ini, vram, variante=0x42):
     `transpone_patrones` (0x468E), y solo se llama cuando los dos bits de
     arriba de C estan puestos.
     """
+    global PAREJAS
     p = ini
+    PAREJAS = []
     for _ in range(64):
         f, datos = descomprime_ram(rom, org, p)
         if f is None:
             return None
-        bufer = datos
+        BUFER[0:len(datos)] = datos         # 0x6A51: encima de lo que habia
+        b, c = rom[f - org], rom[f - org + 1]
+        PAREJAS.append((b, c))
+        prepara_la_figura(BUFER, b, c)      # 0x69D5 -> 0x467B
+        bufer = BUFER
         p = f + 2                           # los dos bytes de 0x69D5
         p = _vuelca(rom, org, p, vram, bufer, variante)
         if p is None or p - org >= len(rom):
@@ -215,17 +287,21 @@ def _vuelca(rom, org, p, vram, bufer, variante):
         d = pagina if variante == 0x42 else 0x05
         destino = ((d << 8) | fila) * 8
         destino = (destino | 0x4000) & 0x3FFF      # set 6,d, y el VDP ve 14 bits
-        if variante != 0x42:                # 0x6A10: un ajuste por fila
-            destino = (destino + rom[p - org]) & 0x3FFF
+        desde = 0
+        if variante != 0x42:
+            # 0x6A10: el byte de ajuste se suma a DE DESPUES del `ld de,0e280h`
+            # de 0x6A0D, o sea al puntero del BUFER, no al destino: elige desde
+            # que byte del trozo se empieza a pintar esta fila
+            desde = rom[p - org]
             p += 1
-        p, destino = _mascaras(rom, org, p, vram, bufer, destino)
+        p, destino = _mascaras(rom, org, p, vram, bufer, destino, desde)
         if p is None:
             return None
 
 
-def _mascaras(rom, org, p, vram, bufer, destino):
+def _mascaras(rom, org, p, vram, bufer, destino, desde=0):
     """0x6A1A: mascaras de ocho bits, un bit por patron."""
-    pos = 0                                 # ld de,0e280h: el bufer, desde el principio
+    pos = desde                             # ld de,0e280h (+ el ajuste, por 0x69FB)
     while True:
         mascara = rom[p - org]
         p += 1

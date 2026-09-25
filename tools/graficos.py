@@ -370,8 +370,8 @@ def copia_dos_tercios(v, de, n):
         v.b[dest:dest + n] = v.b[orig:orig + n]
 
 
-def decorado_de_la_fase_1(v, rom):
-    """0x6D97, el de la cuerda floja. Y 0x7149 detras, que lo apila el
+def decorado_del_leon(v, rom):
+    """0x6D97, el del LEON (tipo 1). Y 0x7149 detras, que lo apila el
     despachador."""
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import escenas as E
@@ -385,38 +385,263 @@ def decorado_de_la_fase_1(v, rom):
     vuelca_patrones_repetidos(v, rom, 0x719E)            # 0x7152
 
 
+def descomprime_en_de(v, rom, ini, de):
+    """0x45CD: el destino viene en DE y el bloque no lleva cabecera."""
+    v.situa(de)
+    return descomprime(v, rom, ini, cabecera=False)
+
+
+def copia_vram_a_vram(v, de, hl, n):
+    """0x458F: de DE a HL dentro de la VRAM, byte a byte y en orden.
+
+    Las dos rutinas de 0x4010 trabajan con DE: lee_de_vram lee (DE), y el
+    `ex de,hl` de antes de escribe_en_vram pone en DE lo que venia en HL. O
+    sea que se LEE por DE y se ESCRIBE por HL. Con HL por delante de DE y la
+    copia hacia delante, lo copiado se vuelve a leer: el decorado se repite
+    cada (HL - DE) bytes, que es lo que 0x7477 quiere.
+    """
+    for i in range(n):
+        v.b[(hl + i) & 0x3FFF] = v.b[(de + i) & 0x3FFF]
+
+
+def del_reves(b):
+    """Los ocho bits de un byte dados la vuelta: 0x758B, ocho `rl d / rra`."""
+    return int("{:08b}".format(b)[::-1], 2)
+
+
+def vuelca_con_espera(v, rom, ini, de):
+    """0x7567: el lenguaje del descompresor, pero cada byte sale con los BITS
+    DEL REVES. Control con el bit 7 a cero: UN byte, repetido N veces; con el
+    bit 7 puesto: N bytes, uno a uno. Un cero cierra. Los `push hl / pop hl`
+    del bucle solo dan tiempo al VDP."""
+    v.situa(de)
+    p = ini - ORG
+    while True:
+        ctrl = rom[p]
+        p += 1
+        if ctrl == 0:
+            return ORG + p
+        n = ctrl & 0x7F
+        if ctrl & 0x80:
+            for i in range(n):
+                v.escribe(del_reves(rom[p + i]))
+            p += n
+        else:
+            b = del_reves(rom[p])
+            p += 1
+            for _ in range(n):
+                v.escribe(b)
+
+
+def celda_de_la_posicion(d, e):
+    """0x53F3 posicion_a_celda: (D, E) en pixeles -> celda de la tabla de
+    nombres. Los giros dejan 0x38 + (D >> 6) en D y ((D >> 3) & 7) * 32 +
+    (E >> 3) en E, o sea 0x3800 + (D >> 3) * 32 + (E >> 3)."""
+    return 0x3800 + ((d >> 3) << 5) + (e >> 3)
+
+
+def pinta_bloque_en_su_sitio(v, rom, de, bc, z):
+    """0x6A6D: un rectangulo de la tabla de nombres con UN patron por fila.
+
+    B celdas de ancho -recortadas a lo que quede hasta el borde derecho- y C
+    filas, desde la celda de (D, E). El patron de cada fila sale de una tira
+    entrando por D >> 3: la de 0x6A9E si toca el dibujo A (tipos 0 y 2) o la
+    de 0x6AA9 si no. Las dos tiras caen sobre bytes que tambien son codigo.
+    Y el `inc hl` esta FUERA del `djnz`: cada fila es un solo patron.
+    """
+    d, e = de >> 8, de & 0xFF
+    celda = celda_de_la_posicion(d, e)
+    tabla = 0x6A9E if z else 0x6AA9
+    p = tabla + ((d >> 3) & 0x1F)
+    b, c = bc >> 8, bc & 0xFF
+    resto = (-((celda & 0xFF) | 0xE0)) & 0xFF
+    if resto < b:
+        b = resto
+    for _ in range(c):
+        patron = rom[p - ORG]
+        for i in range(b):
+            v.b[(celda + i) & 0x3FFF] = patron
+        p += 1
+        celda += 0x20
+
+
+def vuelca_la_figura(v, rom, hl, de, bufer, z):
+    """0x5711: el dibujo grande del decorado, por franjas y CON REFERENCIAS.
+
+    El puntero de VRAM se mueve con 0x57B3 -la columna avanza y da la vuelta
+    DENTRO de la fila, y la fila solo cambia con la parte alta del salto- y
+    al pasar de la columna 31 se vuelve al principio de la MISMA fila
+    (0x57B0: `dec d` y +0xE0). En el dibujo, un cero no es un patron: es una
+    referencia, y el byte siguiente dice cuanto RETROCEDER; a partir de ahi
+    se sigue leyendo desde ese sitio (el `inc hl` de 0x5799 avanza el puntero
+    ya movido). Es una compresion por diccionario dentro del propio dibujo.
+
+    Primero 32 celdas desde la columna 0x15; luego seis filas de 5 celdas con
+    referencias, 6 tal cual y 6 con referencias; luego dos franjas de 15; y
+    al final un patron (ocho bytes) del bufer de 0xE280 -el ultimo trozo de
+    la escena de 0x6D0A- que se elige con el ultimo indice leido y va al
+    patron 0x51: en los tercios 1 y 2 con el dibujo A, en el 0 con el B.
+    """
+    st = {"hl": hl, "de": de}
+
+    def avanza(a):                      # 0x57B3 avanza_sin_salir_de_la_fila
+        e, d = st["de"] & 0xFF, (st["de"] >> 8) & 0xFF
+        col, fila = a & 0x1F, a & 0xE0
+        s = fila + e
+        if s > 0xFF:
+            d = (d + 1) & 0xFF
+        st["de"] = (d << 8) | (s & 0xE0) | ((e + col) & 0x1F)
+
+    def baja_una_fila():                # 0x57B0: dec d, y 0xE0 por 0x57B3
+        st["de"] = (st["de"] - 0x100) & 0xFFFF
+        avanza(0xE0)
+
+    def escribe(a):
+        v.b[st["de"] & 0x3FFF] = a
+        st["de"] = (st["de"] + 1) & 0xFFFF
+        if (st["de"] & 0x1F) == 0:
+            baja_una_fila()
+
+    def lee():
+        a = rom[st["hl"] - ORG]
+        return a
+
+    def franja_con_referencias(b):      # 0x578E
+        for _ in range(b):
+            a = lee()
+            if a == 0:
+                st["hl"] += 1
+                st["hl"] = st["hl"] + rom[st["hl"] - ORG] - 0x100
+                a = lee()
+            st["hl"] += 1
+            escribe(a)
+
+    def con_referencias(a, b):          # 0x578B
+        avanza(a)
+        franja_con_referencias(b)
+
+    con_referencias(0x15, 0x20)                       # 0x5714
+    st["hl"] += 2                                     # 0x571B
+    a = 0x20
+    for _ in range(6):                                # 0x571D, seis grupos
+        g = st["hl"]
+        st["hl"] = g + 6                              # 0x5723
+        con_referencias(a, 5)                         # 0x5729
+        st["hl"] = g                                  # pop hl
+        for _ in range(6):                            # 0x5731, tal cual
+            escribe(lee())
+            st["hl"] += 1
+        franja_con_referencias(6)                     # 0x5742
+        st["hl"] += 2                                 # 0x5745
+        a = 0x2F                                      # 0x5747
+    st["hl"] = st["hl"] + 0xEA - 0x100                # 0x574C: 22 atras
+    st["de"] = (st["de"] - 0x100) & 0xFFFF            # 0x5754 dec d
+    con_referencias(0xC0, 15)                         # 0x5752
+    st["hl"] += 8                                     # 0x575A
+    con_referencias(0x31, 15)                         # 0x575F
+    st["hl"] -= 1                                     # 0x5766
+    ultimo = lee()
+    desde = ((ultimo - 0xB8) & 0x0C) * 2              # 0x5768: 0, 8, 16 o 24
+    patron = bytes(bufer[desde:desde + 8])
+    assert len(patron) == 8, "el bufer de 0xE280 se queda corto"
+    for destino in ((0x2A88, 0x3288) if z else (0x2288,)):   # 0x5772-0x5788
+        v.situa(destino)
+        for x in patron:
+            v.escribe(x)
+
+
+def remata_el_montaje(v, rom, tipo):
+    """0x699D, lo que el despachador de 0x5FD6 apila para despues del decorado
+    de cada tipo: el fondo alterno (solo con el dibujo A), el bloque de un
+    patron por fila, la escena de 0x6D0A y la figura grande. Los tres
+    parametros son constantes del propio remate: 0x1000/0x1800/0x2013 con el
+    dibujo B y 0x6800/0x7000/0x200A con el A."""
+    import escenas as E
+    z = que_dibujo_toca(tipo)
+    if z:
+        descomprime(v, rom, 0x6AC1 if tipo == 2 else 0x6AC6)   # 0x69C8
+        hl, de, bc = 0x6800, 0x7000, 0x200A
+    else:
+        hl, de, bc = 0x1000, 0x1800, 0x2013
+    pinta_bloque_en_su_sitio(v, rom, de, bc, z)               # 0x69B9
+    E.monta(rom, ORG, 0x6D0A, v.b, 0x42)                      # 0x69BF
+    variante = (hl & 0xFF) & 0x06                             # 0x56D5
+    dibujo = rom[0x6ACB + variante - ORG] | (rom[0x6ACB + variante + 1 - ORG] << 8)
+    celda = celda_de_la_posicion(hl >> 8, hl & 0xFF)          # 0x56E5
+    vuelca_la_figura(v, rom, dibujo, celda, E.BUFER, z)
+
+
+def carga_los_sprites_667D(v, rom):
+    """0x603D: el bloque de 0x667D sobre 0x1BA0, los patrones de sprite."""
+    descomprime_en_de(v, rom, 0x667D, 0x1BA0)
+
+
+def decorado_del_trampolin(v, rom):
+    """0x753B, el del TRAMPOLIN (tipo 0). Dos bloques encadenados, los mismos
+    bytes volcados otra vez con los bits del reves -la primera mitad a 0x2680
+    y la segunda a 0x25C0-, 1.152 celdas de 0xF0 y el tercio 0 copiado al 1."""
+    fin = descomprime(v, rom, 0x7596)                    # 0x753E
+    descomprime(v, rom, fin, cabecera=False)             # 0x7541
+    # la tira empieza en 0x7598, detras de la cabecera del bloque, y la
+    # SEGUNDA llamada sigue por donde dejo la primera: 0x7658, la otra mitad
+    fin = vuelca_con_espera(v, rom, 0x7598, 0x2680)      # 0x7547
+    vuelca_con_espera(v, rom, fin, 0x25C0)               # 0x754D
+    rellena(v, 0x0380, 0x0480, 0xF0)                     # 0x7553
+    copia_dos_tercios(v, 0x0500, 0x0180)                 # 0x755E
+
+
+def decorado_de_las_bolas(v, rom):
+    """0x71D9, el de LAS BOLAS (tipo 3): la escena de 0x71EB, sus patrones en 0x1400 y el
+    bloque de 0x728F."""
+    import escenas as E
+    fin = E.monta(rom, ORG, 0x71EB, v.b, 0x42)           # 0x71DC
+    v.situa(0x1400)                                      # 0x71DF
+    vuelca_patrones_repetidos(v, rom, fin)               # 0x71E2
+    descomprime(v, rom, 0x728F)                          # 0x71E8
+
+
+def decorado_del_caballo(v, rom):
+    """0x7477, el del CABALLO (tipo 4): la escena de 0x7498, sus patrones en 0x0AC0, 720
+    bytes de 0x2AC0 copiados sobre 0x2BB0 -solapados, asi que el decorado se
+    repite cada 240- y el tercio 1 al 2."""
+    import escenas as E
+    fin = E.monta(rom, ORG, 0x7498, v.b, 0x42)           # 0x747A
+    v.situa(0x0AC0)                                      # 0x747D
+    vuelca_patrones_repetidos(v, rom, fin)               # 0x7480
+    copia_vram_a_vram(v, 0x2AC0, 0x2BB0, 0x02D0)         # 0x748C
+    copia_dos_tercios(v, 0x0AC0, 0x03C0)                 # 0x7495
+
+
+def decorado_del_tipo(v, rom, tipo):
+    """La tabla de cinco de 0x5FEF, una entrada por tipo de fase."""
+    if tipo == 0:                                        # 0x6034
+        decorado_del_trampolin(v, rom)
+        descomprime(v, rom, 0x67A1)                      # 0x603A
+        carga_los_sprites_667D(v, rom)              # 0x603D
+    elif tipo == 1:                                      # 0x5FF9
+        decorado_del_leon(v, rom)                    # y 0x7149 detras
+    elif tipo == 2:                                      # 0x5FFF
+        descomprime(v, rom, 0x6547)                      # 0x6019
+        descomprime_en_de(v, rom, 0x7056, 0x2D00)        # 0x6008
+        rellena(v, 0x0D00, 0x0100, 0x60)                 # 0x6013
+    elif tipo == 3:                                      # 0x6016
+        decorado_de_las_bolas(v, rom)
+        descomprime(v, rom, 0x6547)                      # 0x6019
+    elif tipo == 4:                                      # 0x601F
+        decorado_del_caballo(v, rom)
+        descomprime_en_de(v, rom, 0x6323, 0x1B20)        # 0x6028
+        carga_los_sprites_667D(v, rom)              # 0x602B
+        descomprime(v, rom, 0x68BD)                      # 0x6031
+
+
 def vram_de_la_atraccion(rom, tipo=0):
-    """LO COMUN A LAS CINCO ATRACCIONES: la cadena de 0x6968.
+    """LA VRAM DE UNA ATRACCION, como la deja 0x5FD6 al empezar la fase.
 
-    ESTADO: INCOMPLETO, y aqui esta dicho para que nadie lo publique creyendo
-    que es la pantalla. Monta la cadena comun y, del reparto por tipo de fase
-    (la tabla de cinco de 0x5FEF), solo el decorado de la fase 1. Falta el
-    remate de 0x699D, que el despachador apila antes de saltar:
-
-        0x69A1  elige_el_decorado_alterno   0x6AC1 o 0x6AC6
-        0x69B9  pinta_bloque_en_su_sitio    el fondo, fila a fila
-        0x69BF  monta_escena 0x6D0A
-        0x69C5  pinta_la_figura_grande
-
-    NO depende del estado del juego -eso se comprobo y es que no-: los tres
-    parametros son CONSTANTES del propio remate (0x1000/0x1800/0x2013, o
-    0x6800/0x7000/0x200A segun `que_dibujo_toca`), y `posicion_a_celda`
-    (0x53F3) trabaja solo con D y E, sin leer una sola direccion de RAM. O sea
-    que se PUEDE montar desde la ROM; lo que falta es implementar esas dos
-    rutinas, que es trabajo pendiente y no un imposible.
-
-    Y una cosa que hay que leer con cuidado al hacerlo: en el bucle de
-    0x6A91 el `inc hl` esta FUERA del `djnz`, asi que cada fila del bloque se
-    pinta con UN solo patron repetido B veces, y solo al cambiar de fila se
-    coge el siguiente.
-
-    Lo que SI esta cerrado es el motor: tools/escenas.py ejecuta ahora la
-    maquina de escenas, y lo que la escena del nivel escribe coincide al
-    100 % con el volcado de la atraccion del monociclo -167 bytes de 167- y al
-    96 % con otras tres.
-
-    Esto es el decorado que comparten las cinco; encima, cada tipo de fase
-    monta el suyo (la tabla de cinco de 0x5FEF).
+    Es la cadena entera: los sprites y el marco, lo comun a las cinco
+    (0x6968), el decorado de SU tipo (la tabla de cinco de 0x5FEF) y el
+    remate de 0x699D, que el despachador apila antes de saltar. Nada aqui
+    depende del estado del juego: los parametros del remate son constantes
+    y posicion_a_celda no lee la RAM.
 
         0x696B  monta_escena 0x6BE3          la escena del nivel
         0x6978  vuelca_patrones_repetidos    desde 0x6D1A, a la VRAM 0x4200
@@ -424,26 +649,114 @@ def vram_de_la_atraccion(rom, tipo=0):
         0x697E  vuelca_lista_de_patrones     idem
         0x6987  copia_a_los_tres_tercios     648 bytes
         0x698A  monta_la_franja_de_abajo     0x72ED + sus patrones en 0x1680
-        0x6997  y, solo en los tipos 0 y 2, otros 1.016 bytes a los tres
+        0x6997  y, solo con el dibujo A (tipos 0 y 2), otros 1.016 bytes a
+                los tres tercios y la escena de 0x73C2 con sus patrones
     """
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import escenas as E
-    v = vram_con_los_sprites(rom)                        # 0x5FD6
+    # LA VRAM SE HEREDA: la fase no parte de cero sino de lo que dejo la
+    # pantalla de seleccion -la fuente, los colores-, con la tabla de nombres
+    # borrada (0x4558). Sin esto, todo lo que la fase no reescribe sale mal.
+    v = vram_de_la_seleccion(rom, cursor=False)
+    v.b[NOMBRES:NOMBRES + 0x300] = bytes(0x300)
+    descomprime(v, rom, 0x61BA)                          # 0x5FD9
+    descomprime(v, rom, 0x5FCF)                          # 0x5FDF
     E.monta(rom, ORG, 0x6BE3, v.b, 0x42)                 # 0x696B
     v.situa(0x4200)                                      # 0x6971
     fin = vuelca_patrones_repetidos(v, rom, 0x6D1A)      # 0x6978
     fin = descomprime(v, rom, fin, cabecera=False)       # 0x697B
     vuelca_patrones_repetidos(v, rom, fin)               # 0x697E
     copia_a_los_tres_tercios(v, 0x0000, 0x0288)          # 0x6987
-    E.monta(rom, ORG, 0x72ED, v.b, 0x42)                 # 0x72E4
+    fin = E.monta(rom, ORG, 0x72ED, v.b, 0x42)           # 0x72E4
     v.situa(0x1680)                                      # 0x72E7
-    vuelca_patrones_repetidos(v, rom, 0x7335)            # 0x72EA
+    vuelca_patrones_repetidos(v, rom, fin)               # 0x72EA
     if que_dibujo_toca(tipo):                            # 0x698D
         copia_a_los_tres_tercios(v, 0x0288, 0x03F8)      # 0x6997
-    # y encima, el decorado de SU tipo: la tabla de cinco de 0x5FEF
-    if tipo == 1:
-        decorado_de_la_fase_1(v, rom)                    # 0x5FF9
+        fin = E.monta(rom, ORG, 0x73C2, v.b, 0x42)       # 0x73B9
+        v.situa(0x0E80)                                  # 0x73BC
+        vuelca_patrones_repetidos(v, rom, fin)           # 0x73BF
+    decorado_del_tipo(v, rom, tipo)                      # 0x5FEC
+    remata_el_montaje(v, rom, tipo)                      # 0x699D
     return v
+
+
+def imprime_bcd(v, de, valores):
+    """0x449D: cada byte BCD son dos digitos, el alto primero, y el "0" es la
+    casilla 0x10 de la fuente. `valores` va como lo recorre la rutina: del
+    byte alto al bajo (el puntero de la variable retrocede)."""
+    v.situa(de)
+    for b in valores:
+        v.escribe(0x10 | (b >> 4))
+        v.escribe(0x10 | (b & 0x0F))
+
+
+def pinta_el_marcador(v, rom, vidas=2, fase_bcd=0x01, bonificacion=(0x80, 0x00),
+                      tanteo=(0, 0, 0), record=(0, 0, 0)):
+    """0x4450, EL MARCADOR ENTERO, como queda al empezar la primera fase.
+
+    Los rotulos fijos salen del guion de 0x499F -"1P-", "HI-", "STAGE-",
+    "BONUS-"-; los numeros, del impresor de BCD: el tanteo en 0x3805 (tres
+    bytes, 0xE04B hacia atras), el record en 0x380F (0xE045), el numero de
+    fase en 0x381C (0xE051, un byte) y la bonificacion en 0x3832 (dos bytes,
+    0xE058 y 0xE057). Las vidas, 0x44D4: una marca 0x0B por vida desde la
+    celda 0x383D hacia la izquierda, cinco como mucho.
+
+    Los valores por defecto son los MEDIDOS en 0x4C3C con
+    tools/omsx_montaje.tcl al arrancar una partida: dos vidas -tres menos la
+    que se va a jugar, el `dec (hl)` de 0x416B-, fase 01 y bonificacion 8000.
+    """
+    pinta_rotulo(v, rom, 0x499F)                         # 0x4453
+    imprime_bcd(v, 0x3805, tanteo)                       # 0x4483
+    imprime_bcd(v, 0x380F, record)                       # 0x447A
+    imprime_bcd(v, 0x381C, (fase_bcd,))                  # 0x4495
+    imprime_bcd(v, 0x3832, bonificacion)                 # 0x52A0
+    de = 0x383D                                          # 0x44D4
+    for k in range(1, 6):
+        v.b[de] = 0x0B if vidas - k >= 0 else 0x00
+        de -= 1
+
+
+def marco_del_rotulo(v, desde=0xC0, hasta=0xE1):
+    """Donde cae el rotulo grande en la tabla de nombres: las celdas con los
+    patrones del rotulo (0xC0..0xE1, los sesenta que colorea el FILVRM de
+    0x4351), medidas y no puestas a ojo. Devuelve (fila, col, alto, ancho) en
+    celdas con una celda de margen."""
+    # solo cuentan las filas donde el rotulo DOMINA (ocho celdas o mas en su
+    # rango): una celda suelta del menu con un patron de ese rango no es el
+    # rotulo, y llevarse la pantalla entera por ella es justo lo que se evita
+    # y solo en el TERCIO del rotulo: los numeros de patron se repiten en los
+    # tres tercios de SCREEN 2, y el menu de abajo usa 0xC0-0xE1 del tercio 2
+    # para otra cosa
+    filas, cols = [], []
+    for f in range(24):
+        en_fila = [c for c in range(32) if desde <= v.b[NOMBRES + f * 32 + c] <= hasta]
+        if len(en_fila) >= 8 and (not filas or f // 8 == filas[0] // 8):
+            filas.append(f)
+            cols.extend(en_fila)
+    f0, f1, c0, c1 = min(filas), max(filas), min(cols), max(cols)
+    return f0 - 1, c0 - 1, f1 - f0 + 3, c1 - c0 + 3
+
+
+def rotulo_del_juego(v, fn, esc=4):
+    """El logotipo del juego -"Circus Charlie", en rojo y blanco- recortado
+    de la pantalla de titulo montada desde la ROM, para la cabecera de la
+    web. Ley de la serie: el rotulo se dibuja, no se captura."""
+    f0, c0, alto, ancho = marco_del_rotulo(v)
+    w, h = ancho * 8, alto * 8
+    px = lienzo(w * esc, h * esc, (0, 0, 0))
+    for f in range(alto):
+        for c in range(ancho):
+            t = v.b[NOMBRES + (f0 + f) * 32 + c0 + c]
+            tercio = (f0 + f) // 8
+            pinta_celda(px, w * esc, c * 8 * esc, f * 8 * esc,
+                        v.b[PATRONES + tercio * 0x800 + t * 8:
+                            PATRONES + tercio * 0x800 + t * 8 + 8],
+                        v.b[COLOR + tercio * 0x800 + t * 8:
+                            COLOR + tercio * 0x800 + t * 8 + 8], esc)
+    png(w * esc, h * esc, px, fn)
+
+
+ATRACCIONES = ("trapecio", "leon", "cuerda-floja", "bolas", "caballo")
 
 
 def pinta_celda(px, w, x0, y0, patron, color, esc=1):
@@ -566,6 +879,42 @@ def sprites(v, base, fn, n=16, cols=8, esc=3):
     png(w, h, px, fn)
 
 
+# El cuadro de cada foto en pista, contado desde el montaje (0x4C3C) en los
+# vuelcos de sprites de 0x4CA9, con la flecha derecha pulsada: el instante en
+# que se ve mejor el obstaculo de cada numero.
+EN_PISTA = (100, 100, 150, 350, 50)
+
+
+def en_pista(rom, tipo, cuadros, teclas=0x80):
+    """La VRAM del cartucho EN MARCHA, `cuadros` despues del montaje."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from corre_circus import Circus, MONTADA, VUELCA_LOS_SPRITES
+    m = Circus(rom)
+    m.tipo = tipo
+    m.arranca()
+    cuenta = [-1]
+
+    def montada(z):
+        cuenta[0] = 0
+
+    def vuelca(z):
+        if cuenta[0] >= 0:
+            cuenta[0] += 1
+
+    m.paradas[MONTADA] = montada
+    m.paradas[VUELCA_LOS_SPRITES] = vuelca
+    f = 0
+    while cuenta[0] < 0:                  # el menu: espacio a golpes
+        m.espacio = (f % 100) < 20
+        m.cuadro()
+        f += 1
+    m.espacio = False
+    m.teclas = {8: teclas}
+    while cuenta[0] < cuadros:
+        m.cuadro()
+    return bytes(m.vdp.vram), list(m.vdp.regs)
+
+
 def main():
     global ORG
     rom = open(sys.argv[1], "rb").read()
@@ -591,6 +940,32 @@ def main():
     # 0x1800 esta a cero, y dibujarla desde ahi daba una lamina entera NEGRA.
     sprites(vram_con_los_sprites(rom), SPRITES,
             os.path.join(sal, "sprites.png"), n=32, cols=8)
+
+    # EL ROTULO DEL JUEGO, para la cabecera: recortado de la pantalla de
+    # titulo con el marco medido sobre la tabla de nombres
+    rotulo_del_juego(vram_de_la_seleccion(rom, cursor=False),
+                     os.path.join(sal, "rotulo.png"))
+
+    # LAS CINCO ATRACCIONES, montadas desde la ROM con la cadena entera de
+    # 0x5FD6 y con el marcador tal como queda al empezar la partida. Cada una
+    # esta cotejada a CERO bytes contra la VRAM que openMSX tiene en 0x4C3C
+    # (tools/omsx_montaje.tcl + tools/coteja_montaje.py). Sin sprites: el
+    # jugador y los bichos los pinta el juego cuadro a cuadro, no el montaje.
+    for tipo, nombre in enumerate(ATRACCIONES):
+        v = vram_de_la_atraccion(rom, tipo)
+        pinta_el_marcador(v, rom)
+        pantalla_entera(v, os.path.join(sal, "atraccion-%d-%s.png" % (tipo, nombre)))
+
+    # Y LAS CINCO EN PISTA, con Charlie, su animal y los obstaculos. Esos no
+    # los pone el montaje sino el juego cuadro a cuadro, asi que se EJECUTA el
+    # cartucho (tools/corre_circus.py) y se fotografia su VRAM en el cuadro
+    # elegido. Cotejado contra openMSX en tools/coteja_arranque.py: 0 bytes.
+    for tipo, nombre in enumerate(ATRACCIONES):
+        v, regs = en_pista(rom, tipo, EN_PISTA[tipo])
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import vram as V
+        px = V.pantalla(v, regs, con_sprites=True)
+        png(256, 192, px, os.path.join(sal, "en-pista-%d-%s.png" % (tipo, nombre)))
 
     for f in sorted(os.listdir(sal)):
         print("  ", os.path.join(sal, f))

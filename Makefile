@@ -105,6 +105,26 @@ pares: $(ROM)
 coteja:
 	@python3 tools/coteja_pixels.py --serie $(SERIE)
 
+# LAS CINCO ATRACCIONES DESDE LA ROM, cotejadas contra la VRAM en el instante
+# justo. `montaje` deja correr el cartucho y vuelca la VRAM en 0x4C3C -la
+# instruccion que sigue al montaje del decorado- con el tipo de fase forzado
+# ANTES del primer montaje, uno por tipo; `coteja_montaje` compara byte a byte
+# lo que monta tools/graficos.py con cada volcado: tiene que dar CERO en color,
+# patrones, patrones de sprite y tabla de nombres, marcador incluido.
+MONTAJE  ?= $(WORK)/montaje
+
+montaje: $(ROM)
+	PP_SALIDA="$(CURDIR)/$(MONTAJE)" 	    "$(OPENMSX)" -machine Philips_VG_8020 -cart $(ROM) 	                 -script tools/omsx_montaje.tcl
+
+coteja_montaje: $(ROM)
+	@python3 tools/coteja_montaje.py $(ROM) $(MONTAJE)
+
+# EL CARTUCHO EN MARCHA: tools/corre_circus.py contra los volcados de
+# tools/omsx_arranque.tcl (work/arranque), cuadro a cuadro, a cero bytes.
+ARRANQUE = work/arranque
+coteja_arranque: $(ROM)
+	@python3 tools/coteja_arranque.py $(ROM) $(ARRANQUE)
+
 # LA WEB
 #
 # Bilingue: el ingles en docs/ y el castellano en docs/es/. Las paginas se
@@ -121,4 +141,4 @@ clean:
 	rm -rf $(WORK)/circus.trace.json $(WORK)/circus.blocks
 
 .PHONY: all comprueba trace listado verify sanity test densidad imagenes \
-        pares coteja web clean
+        pares coteja web clean montaje coteja_montaje coteja_arranque
