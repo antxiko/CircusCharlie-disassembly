@@ -6,8 +6,8 @@ autocontenida, con las imagenes embebidas como data URI.
 
 Las imagenes NO son ilustraciones ni capturas: las dibuja tools/graficos.py a
 partir de los propios bytes de la ROM, con las maquinas del cartucho escritas
-en Python y, para las atracciones en marcha, EJECUTANDO el cartucho con
-tools/corre_circus.py. Ninguna se ha retocado.
+en Python y, para las atracciones en pista, con el cuadro de partida escrito
+desde sus tablas (tools/pista.py). Ninguna se ha retocado.
 
 Uso: make_web.py <docs/imagenes> <salida.html> <idioma>
 """
@@ -42,14 +42,14 @@ TXT = {
         aviso="<b>Aqui no hay ninguna captura.</b> Todas las imagenes estan "
               "<b>dibujadas desde los bytes de la ROM</b>: el decorado con las "
               "maquinas del cartucho escritas en Python, y los personajes "
-              "<b>ejecutando el propio cartucho</b>, cotejado contra la VRAM de "
-              "openMSX a cero bytes. El "
+              "<b>con el cuadro de partida escrito desde sus tablas</b>, "
+              "cotejado contra openMSX a cero bytes. El "
               "listado y las cifras se reproducen con <code>make</code>, y el "
               "reensamblado devuelve la ROM <b>byte a byte</b>.",
         claim="Un juego entero que vive dentro de la interrupcion, cinco "
-              "numeros de circo repartidos por un solo byte, y un cartucho que "
-              "corre en Python de INIT a la pista sin un byte de VRAM "
-              "distinto del emulador.",
+              "numeros de circo repartidos por un solo byte, y la pista "
+              "dibujada desde las tablas del cartucho, cuadro a cuadro, sin un "
+              "byte distinto del emulador.",
         ficha=["Konami - <b>(c) Konami 1984</b>",
                "Cartucho <b>RC-712</b>, 16 KB",
                "MSX1 - <b>pagina 1</b>", "Volcado <b>89e1bada...</b>"],
@@ -80,15 +80,15 @@ TXT = {
         titulo="Circus Charlie - a commented disassembly",
         aviso="<b>Not one capture here.</b> Every picture is <b>drawn from "
               "the bytes of the ROM</b>: the scenery with the cartridge's own "
-              "machines rewritten in Python, and the characters by <b>running "
-              "the cartridge itself</b>, checked against openMSX's VRAM down "
-              "to zero bytes. The listing and the numbers "
+              "machines rewritten in Python, and the characters <b>with the "
+              "game frame written from its tables</b>, checked against openMSX "
+              "down to zero bytes. The listing and the numbers "
               "are reproducible with <code>make</code>, and reassembling "
               "gives back the ROM <b>byte for byte</b>.",
         claim="A whole game living inside the interrupt, five circus acts "
-              "chosen by a single byte, and a cartridge that runs in Python "
-              "from INIT to the ring without one VRAM byte differing from the "
-              "emulator.",
+              "chosen by a single byte, and the ring drawn from the "
+              "cartridge's tables, frame by frame, without one byte differing "
+              "from the emulator.",
         ficha=["Konami - <b>(c) Konami 1984</b>",
                "An <b>RC-712</b> 16 KB cartridge",
                "MSX1 - <b>page 1</b>", "Dump <b>89e1bada...</b>"],
