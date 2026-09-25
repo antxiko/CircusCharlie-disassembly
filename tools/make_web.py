@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Genera la portada de la web de Konami's Ping Pong, en los dos idiomas.
+"""Genera la portada de la web de Circus Charlie, en los dos idiomas.
 
 El diseno es el compartido por la serie (tools/estilo_web.py) y la pagina sale
 autocontenida, con las imagenes embebidas como data URI.
 
-Las imagenes NO son ilustraciones ni capturas: las dibuja tools/pantallas.py a
-partir de los propios bytes de la ROM, ejecutando en Python los mismos
-interpretes de guiones que corre el Z80. Ninguna se ha retocado.
+Las imagenes NO son ilustraciones ni capturas: las dibuja tools/graficos.py a
+partir de los propios bytes de la ROM, con las maquinas del cartucho escritas
+en Python y, para las atracciones en marcha, EJECUTANDO el cartucho con
+tools/corre_circus.py. Ninguna se ha retocado.
 
 Uso: make_web.py <docs/imagenes> <salida.html> <idioma>
 """
@@ -18,17 +19,17 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from estilo_web import ESTILO                                   # noqa: E402
 
 # Las cifras salen de contar sobre el listado generado, no de escribirlas a
-# ojo: 16384 = 7676 + 8708, que es lo que imprime tools/presupuesto.py
+# ojo: 16384 = 7894 + 8490, que es lo que imprime tools/presupuesto.py
 # (make sanity). RUTINAS son los bloques con nombre que cuenta densidad.py y
 # DENSIDAD la proporcion de instrucciones comentadas, las dos de
 # tools/densidad.py (make densidad).
-CODIGO = 7676
-DATOS = 8708
-RUTINAS = 548
-INSTRUCCIONES = 3893
-COMENTARIOS = 2503
-DENSIDAD = "64,3"
-DENSIDAD_EN = "64.3"
+CODIGO = 7894
+DATOS = 8490
+RUTINAS = 576
+INSTRUCCIONES = 4206
+COMENTARIOS = 1983
+DENSIDAD = "47,1"
+DENSIDAD_EN = "47.1"
 
 
 def mil(n, idioma):
@@ -37,19 +38,21 @@ def mil(n, idioma):
 
 TXT = {
     "es": dict(
-        titulo="Konami's Ping Pong - desensamblado comentado",
+        titulo="Circus Charlie - desensamblado comentado",
         aviso="<b>Aqui no hay ninguna captura.</b> Todas las imagenes estan "
-              "<b>dibujadas desde los bytes de la ROM</b>, ejecutando en "
-              "Python los dos interpretes de guiones que corre el Z80. El "
+              "<b>dibujadas desde los bytes de la ROM</b>: el decorado con las "
+              "maquinas del cartucho escritas en Python, y los personajes "
+              "<b>ejecutando el propio cartucho</b>, cotejado contra la VRAM de "
+              "openMSX a cero bytes. El "
               "listado y las cifras se reproducen con <code>make</code>, y el "
               "reensamblado devuelve la ROM <b>byte a byte</b>.",
-        claim="Una mesa cuya mitad derecha no esta guardada -se dibuja "
-              "reflejando la izquierda byte a byte-, cuarenta fotogramas que "
-              "llevan pegado detras el puntero a sus propios patrones, y el "
-              "reglamento del tenis de mesa entero escrito en BCD.",
-        ficha=["Konami - <b>(c) Konami 1985</b>",
-               "Cartucho <b>RC-731</b>, 16 KB",
-               "MSX1 - <b>pagina 1</b>", "Volcado <b>8e0f57b2...</b>"],
+        claim="Un juego entero que vive dentro de la interrupcion, cinco "
+              "numeros de circo repartidos por un solo byte, y un cartucho que "
+              "corre en Python de INIT a la pista sin un byte de VRAM "
+              "distinto del emulador.",
+        ficha=["Konami - <b>(c) Konami 1984</b>",
+               "Cartucho <b>RC-712</b>, 16 KB",
+               "MSX1 - <b>pagina 1</b>", "Volcado <b>89e1bada...</b>"],
         nav=[("#numbers", "Las cifras"), ("#findings", "Hallazgos"),
              ("#screens", "Lo que dibuja")],
         docnav=[("EMPEZAR.html", "Empezar"), ("EL-JUEGO.html", "El juego"),
@@ -74,19 +77,21 @@ TXT = {
                 "imagen del cartucho no se distribuye.",
     ),
     "en": dict(
-        titulo="Konami's Ping Pong - a commented disassembly",
+        titulo="Circus Charlie - a commented disassembly",
         aviso="<b>Not one capture here.</b> Every picture is <b>drawn from "
-              "the bytes of the ROM</b>, by running in Python the same two "
-              "script interpreters the Z80 runs. The listing and the numbers "
+              "the bytes of the ROM</b>: the scenery with the cartridge's own "
+              "machines rewritten in Python, and the characters by <b>running "
+              "the cartridge itself</b>, checked against openMSX's VRAM down "
+              "to zero bytes. The listing and the numbers "
               "are reproducible with <code>make</code>, and reassembling "
               "gives back the ROM <b>byte for byte</b>.",
-        claim="A table whose right half is not stored anywhere -it is drawn "
-              "by mirroring the left one byte by byte-, forty frames each "
-              "carrying the pointer to its own patterns right behind it, and "
-              "the whole of table tennis scoring written in BCD.",
-        ficha=["Konami - <b>(c) Konami 1985</b>",
-               "An <b>RC-731</b> 16 KB cartridge",
-               "MSX1 - <b>page 1</b>", "Dump <b>8e0f57b2...</b>"],
+        claim="A whole game living inside the interrupt, five circus acts "
+              "chosen by a single byte, and a cartridge that runs in Python "
+              "from INIT to the ring without one VRAM byte differing from the "
+              "emulator.",
+        ficha=["Konami - <b>(c) Konami 1984</b>",
+               "An <b>RC-712</b> 16 KB cartridge",
+               "MSX1 - <b>page 1</b>", "Dump <b>89e1bada...</b>"],
         nav=[("#numbers", "The numbers"), ("#findings", "What turned up"),
              ("#screens", "What it draws")],
         docnav=[("GETTING-STARTED.html", "Getting started"),
@@ -135,9 +140,9 @@ def main(argv):
     # ROM por graficos.py. Si el PNG no esta, el trabajo NO esta hecho: se cae
     # al texto, y eso se ve.
     ruta_logo = os.path.join(imgdir, "rotulo.png")
-    cabecera = (f'<img src="{img64(ruta_logo)}" alt="Konami&#39;s Ping Pong">'
+    cabecera = (f'<img src="{img64(ruta_logo)}" alt="Circus Charlie">'
                 if os.path.exists(ruta_logo)
-                else "<h1>Konami&#39;s Ping Pong</h1>")
+                else "<h1>Circus Charlie</h1>")
 
     nav = "".join(f'<a href="{h}">{x}</a>' for h, x in t["nav"])
     nav += "".join(f'<a href="{h}">{x}</a>' for h, x in t["docnav"])

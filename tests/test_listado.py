@@ -447,5 +447,219 @@ class Escenas(unittest.TestCase):
         self.assertNotEqual(escena(lee(), ORG, 0x6DC1, 0x42)[0], 0x6FA5)
 
 
+# ----------------------------------------------------------------------------
+# LA WEB. Portados de GOONIES_DISAM: las cifras de la portada atadas al
+# listado, y el barrido de nombres y ficheros de otros juegos de la serie.
+# ----------------------------------------------------------------------------
+
+DOCS = os.path.join(RAIZ, "docs")
+
+# Los demas juegos de la serie. Que el nombre de otro salga en una pagina de
+# este es casi siempre un copia y pega: ya paso con cinco ficheros LICENSE, con
+# el pie de catorce paginas de otro proyecto y con tests que apuntaban a
+# src/soccer.asm. Este andamiaje, ademas, llego de Ping Pong.
+OTROS_JUEGOS = (
+    "Tennis", "Pitfall", "Temptations", "Stardust", "Ale Hop", "Colt 36",
+    "Antarctic", "Athletic Land", "Monkey Academy", "F-1 Spirit", "Pippols",
+    "Time Pilot", "Frogger", "Super Cobra", "Billiards", "Mahjong",
+    "Hyper Rally", "Nemesis", "Demonia", "Cabbage", "Hole in One",
+    "Casio World Open", "3D Golf", "Baseball", "Yie Ar Kung-Fu",
+    "King's Valley", "Sky Jaguar", "Mopi Ranger", "Descubrimiento",
+    "War in Middle Earth", "Ping Pong", "Soccer", "Football", "Road Fighter",
+    "Hyper Sports", "Hyper Olympic", "Goonies", "Knightmare", "Twin Bee",
+    "Penguin", "Bomber", "Magical Tree", "Comic Bakery",
+)
+
+# Magical Tree se nombra A PROPOSITO en los hallazgos: es el mismo codigo
+# desplazado, y eso es el hallazgo. La excepcion vale solo en esas paginas,
+# solo para ese juego y solo si aparece la palabra que la justifica.
+CITAS_LEGITIMAS = {
+    "HALLAZGOS.md": ("desplazado", ("Magical Tree",)),
+    "FINDINGS.md": ("shifted", ("Magical Tree",)),
+}
+CITAS_LEGITIMAS["HALLAZGOS.html"] = CITAS_LEGITIMAS["HALLAZGOS.md"]
+CITAS_LEGITIMAS["FINDINGS.html"] = CITAS_LEGITIMAS["FINDINGS.md"]
+
+
+def lee_texto(ruta):
+    with open(ruta, encoding="utf-8") as f:
+        return f.read()
+
+
+def bytes_de_datos_del_listado():
+    """Cuantos bytes salen en filas defb/defw: los DATOS del cartucho."""
+    n = 0
+    for ln in lee_texto(ASM).splitlines():
+        m = FILA.match(ln)
+        if not m:
+            continue
+        toks = [t for t in m.group(2).split(",") if t.strip()]
+        n += len(toks) * (1 if m.group(1) == "b" else 2)
+    return n
+
+
+class LasCifrasDeLaPortada(unittest.TestCase):
+    """Las cifras que declara make_web.py tienen que ser las del listado.
+
+    Se copian del proyecto anterior, y hasta que no se cambian son las del
+    juego anterior. Este test es lo unico que impide publicarlas asi.
+    """
+
+    def setUp(self):
+        import make_web
+        self.w = make_web
+
+    def test_la_suma_de_bytes_da_el_cartucho(self):
+        self.assertEqual(self.w.CODIGO + self.w.DATOS, 16384)
+
+    def test_las_cifras_de_bytes_son_las_de_este_listado(self):
+        """Las del juego anterior tambien sumaban 16384: por eso se atan a
+        los defb/defw de ESTE listado."""
+        datos = bytes_de_datos_del_listado()
+        self.assertEqual(self.w.DATOS, datos)
+        self.assertEqual(self.w.CODIGO, 16384 - datos)
+
+    def test_las_cifras_de_la_portada_son_las_del_listado(self):
+        """Se EJECUTA tools/densidad.py y se le lee la salida."""
+        import subprocess
+        salida = subprocess.run(
+            [sys.executable, os.path.join(RAIZ, "tools", "densidad.py"), ASM],
+            capture_output=True, text=True, check=True).stdout
+        m = re.search(r"(\d+) instrucciones, (\d+) comentarios", salida)
+        self.assertIsNotNone(m, "densidad.py no imprimio el total:\n" + salida)
+        self.assertEqual(self.w.INSTRUCCIONES, int(m.group(1)))
+        self.assertEqual(self.w.COMENTARIOS, int(m.group(2)))
+        m = re.search(r"(\d+) rutinas por debajo del 10 %, de (\d+)", salida)
+        self.assertIsNotNone(m)
+        self.assertEqual(int(m.group(1)), 0, "hay rutinas flojas")
+        self.assertEqual(self.w.RUTINAS, int(m.group(2)))
+
+    def test_la_densidad_declarada_cuadra_con_las_dos_cuentas(self):
+        pct = 100.0 * self.w.COMENTARIOS / self.w.INSTRUCCIONES
+        self.assertAlmostEqual(pct, float(self.w.DENSIDAD.replace(",", ".")),
+                               places=1)
+        self.assertEqual(self.w.DENSIDAD.replace(",", "."), self.w.DENSIDAD_EN)
+
+    def test_la_ficha_dice_el_sha_de_este_cartucho(self):
+        sha = None
+        for linea in lee_texto(os.path.join(RAIZ, "Makefile")).splitlines():
+            if linea.startswith("SHA"):
+                sha = linea.split("=")[1].strip()
+        self.assertIsNotNone(sha)
+        for idioma in ("es", "en"):
+            ficha = " ".join(self.w.TXT[idioma]["ficha"])
+            self.assertIn(sha[:8], ficha)
+            self.assertIn("RC-712", ficha)
+
+
+class SinNombresDeOtroJuego(unittest.TestCase):
+    """El copia y pega de otro proyecto de la serie, cazado a tiempo."""
+
+    def _revisa(self, ruta):
+        texto = lee_texto(ruta)
+        fn = os.path.basename(ruta)
+        palabra, permitidos = CITAS_LEGITIMAS.get(fn, (None, ()))
+        if permitidos:
+            self.assertIn(palabra, texto.lower(),
+                          "%s puede nombrar %s solo si dice por que (%r)"
+                          % (fn, permitidos, palabra))
+        for juego in OTROS_JUEGOS:
+            if juego in permitidos:
+                continue
+            self.assertNotIn(juego, texto, "%s nombra a %s" % (fn, juego))
+
+    def test_el_encabezado_del_listado_es_de_este_juego(self):
+        cabeza = "\n".join(lee_texto(ASM).splitlines()[:30])
+        for juego in OTROS_JUEGOS:
+            self.assertNotIn(juego, cabeza)
+
+    def test_la_licencia_y_los_avisos_son_de_este_juego(self):
+        for fn in ("LICENSE", "README.md", "README.es.md", "AVISO-LEGAL.md",
+                   "LEGAL-NOTICE.md"):
+            ruta = os.path.join(RAIZ, fn)
+            self.assertTrue(os.path.exists(ruta), "falta %s" % fn)
+            self._revisa(ruta)
+
+    OTROS_FICHEROS = ("soccer", "hypersports", "roadfighter", "pingpong",
+                      "mopiranger", "tennis", "baseball", "nemesis",
+                      "pippols", "antarctic", "golf", "frogger",
+                      "kingsvalley", "yiearkungfu", "skyjaguar", "hyperrally",
+                      "goonies", "knightmare", "twinbee", "magical", "comic")
+
+    def _sin_ficheros_de_otro(self, ruta):
+        texto = lee_texto(ruta).lower()
+        for otro in self.OTROS_FICHEROS:
+            for pega in ("src/%s" % otro, "%s.asm" % otro, "%s.rom" % otro,
+                         "%s.notes" % otro):
+                self.assertNotIn(pega, texto, "%s nombra el fichero %s"
+                                 % (os.path.relpath(ruta, RAIZ), pega))
+
+    def test_las_herramientas_no_apuntan_al_fichero_de_otro_juego(self):
+        for fn in os.listdir(os.path.join(RAIZ, "tools")):
+            if fn.endswith((".py", ".tcl")):
+                self._sin_ficheros_de_otro(os.path.join(RAIZ, "tools", fn))
+
+    def test_ni_los_textos_publicados_ni_los_tests(self):
+        for sitio in (RAIZ, os.path.join(RAIZ, "tests"), DOCS,
+                      os.path.join(DOCS, "es")):
+            for fn in os.listdir(sitio):
+                ruta = os.path.join(sitio, fn)
+                if os.path.isfile(ruta) and fn != "test_listado.py" and (
+                        fn.endswith((".md", ".py", ".html")) or fn == "LICENSE"):
+                    self._sin_ficheros_de_otro(ruta)
+
+    def test_la_web_no_nombra_otro_juego(self):
+        for raiz, _, ficheros in os.walk(DOCS):
+            for fn in ficheros:
+                if fn.endswith((".md", ".html")):
+                    self._revisa(os.path.join(raiz, fn))
+
+
+class LasAtraccionesEnPista(unittest.TestCase):
+    """Las cinco fotos en pista existen y salen del cartucho EJECUTADO."""
+
+    def test_las_cinco_estan_publicadas(self):
+        import graficos
+        for tipo, nombre in enumerate(graficos.ATRACCIONES):
+            ruta = os.path.join(DOCS, "imagenes",
+                                "en-pista-%d-%s.png" % (tipo, nombre))
+            self.assertTrue(os.path.exists(ruta), ruta)
+
+    def test_el_tipo_0_es_el_trapecio(self):
+        import graficos
+        self.assertEqual(graficos.ATRACCIONES[0], "trapecio")
+
+    def test_el_primer_numero_es_el_leon(self):
+        """Corriendo el cartucho sin forzar nada, el primer montaje es el
+        tipo 1. Es lo que dice EL-JUEGO / THE-GAME.
+
+        Aqui hace falta el CODIGO, no solo los datos, asi que la imagen
+        rehecha desde los defb no vale. Sin el cartucho se reensambla el
+        listado con pasmo, que es lo mismo que comprueba `make verify`.
+        """
+        from corre_circus import Circus, MONTA_LA_FASE
+        if os.path.exists(ROM):
+            rom = lee()
+        else:
+            import subprocess
+            import tempfile
+            with tempfile.TemporaryDirectory() as d:
+                salida = os.path.join(d, "circus.bin")
+                subprocess.run(["pasmo", "--bin", ASM, salida], check=True,
+                               capture_output=True)
+                with open(salida, "rb") as f:
+                    rom = f.read()
+        m = Circus(rom)
+        m.arranca()
+        visto = []
+        m.paradas[MONTA_LA_FASE] = lambda z: visto.append(z.mem[0xE052])
+        f = 0
+        while not visto and f < 3000:
+            m.espacio = (f % 100) < 20
+            m.cuadro()
+            f += 1
+        self.assertEqual(visto[:1], [1])
+
+
 if __name__ == "__main__":
     unittest.main()

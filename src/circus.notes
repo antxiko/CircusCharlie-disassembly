@@ -2698,8 +2698,8 @@ L 0x4c6d remata_el_cuadro_del_jugador
 C 0x4c6d el estado del jugador
 C 0x4c70 de 6 en adelante es un final
 C 0x4c7b se despacha
-L 0x4cc2 fase_4_el_cuadro_entero
-B 0x4cc2 EL CUADRO DE LA FASE TIPO 4, que es la mas cargada: ritmo de la figura, estado del jugador, movimiento de la figura, ritmo de la segunda, lo que sujeta y el relevo. Seis llamadas, en ese orden.
+L 0x4cc2 cuadro_del_trapecio
+B 0x4cc2 EL CUADRO DEL TRAPECIO (tipo 0: es la entrada 0 de la tabla de 0x4C93), que es el mas cargado: ritmo de la figura, estado del jugador, movimiento de la figura, ritmo de la segunda, lo que sujeta y el relevo. Seis llamadas, en ese orden. Las dos figuras grandes son los dos trapecios, los mismos que arranca 0x6161.
 L 0x5388 mueve_el_tramo_de_arriba
 C 0x5388 lo que hay apuntado
 C 0x538e el bit 7 de la posicion

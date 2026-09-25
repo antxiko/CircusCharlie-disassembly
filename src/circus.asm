@@ -1797,9 +1797,9 @@ L_4CBA:
 	jr L_4CA3		;4cc0
 
 ; ----------------------------------------------------------------------
-; EL CUADRO DE LA FASE TIPO 4, que es la mas cargada: ritmo de la figura, estado del jugador, movimiento de la figura, ritmo de la segunda, lo que sujeta y el relevo. Seis llamadas, en ese orden.
+; EL CUADRO DEL TRAPECIO (tipo 0: es la entrada 0 de la tabla de 0x4C93), que es el mas cargado: ritmo de la figura, estado del jugador, movimiento de la figura, ritmo de la segunda, lo que sujeta y el relevo. Seis llamadas, en ese orden. Las dos figuras grandes son los dos trapecios, los mismos que arranca 0x6161.
 ; ----------------------------------------------------------------------
-fase_4_el_cuadro_entero:
+cuadro_del_trapecio:
 	call avanza_la_animacion_grande		;4cc2   ; el ritmo de la figura grande, lo primero del cuadro
 	call despacha_el_estado_del_jugador		;4cc5   ; y el estado del jugador detras
 	call mueve_la_figura_grande		;4cc8

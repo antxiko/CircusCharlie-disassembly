@@ -1,0 +1,114 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>El juego — Circus Charlie (Konami, 1984)</title>
+<style>
+:root{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;--linea:#23262e;
+  --rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+@media (prefers-color-scheme:light){:root{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;
+  --panel:#f7f6f2;--linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}}
+:root[data-theme="dark"]{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;
+  --linea:#23262e;--rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+:root[data-theme="light"]{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;--panel:#f7f6f2;
+  --linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);padding:0 1.25rem 6rem;
+  font:15px/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.w{max-width:1120px;margin:0 auto}
+.n{max-width:68ch}
+h1,h2,h3,h4{font-weight:400;text-wrap:balance}
+a{color:var(--cyan)}
+img{image-rendering:pixelated;max-width:100%;height:auto;display:block}
+header.top{display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  padding:4rem 0 2rem;text-align:center}
+header.top img{width:min(100%,642px)}
+.claim{max-width:60ch;color:var(--suave);font-size:1.05rem}
+.claim b{color:var(--tinta);font-weight:400}
+.ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;width:100%;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);padding:.85rem 0}
+.ficha b{color:var(--rojo);font-weight:400}
+nav{display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:center;padding:1.25rem 0;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+nav a{color:var(--suave);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus{color:var(--tinta);border-bottom-color:var(--rojo)}
+nav.docs{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);
+  margin-bottom:1rem}
+section{margin-top:4.5rem;scroll-margin-top:1rem}
+section>h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;
+  border-left:3px solid var(--rojo);padding-left:.9rem;margin:0 0 1.5rem}
+.cifras{display:grid;gap:1px;background:var(--linea);border:1px solid var(--linea);
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.cifra{background:var(--panel);padding:1.1rem}
+.cifra b{display:block;font-size:1.7rem;color:var(--oro);font-weight:400;
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.cifra span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave)}
+.hall{border-top:1px solid var(--linea);padding-top:1.75rem;margin-top:2.5rem}
+.hall:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.hall h3{margin:0 0 .75rem;font-size:1.15rem;color:var(--rojo)}
+.hall h4{color:var(--oro);margin:1.5rem 0 .5rem;font-size:.95rem}
+.hall p{margin:0 0 1rem}
+pre.asm{background:var(--panel);border-left:2px solid var(--verde);margin:1.25rem 0;
+  padding:1rem 1.1rem;overflow-x:auto;font-size:13px;line-height:1.6;color:var(--tinta)}
+.par{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media(min-width:820px){.par{grid-template-columns:1fr 1fr}}
+.par figure{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.25rem 0;font-size:13px;display:block;
+  overflow-x:auto}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--linea)}
+th{color:var(--suave);font-weight:400;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+td.num{font-variant-numeric:tabular-nums;color:var(--oro)}
+.nivel{margin-top:2rem}
+.nivel h3{margin:0 0 .9rem;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase}
+.nivel em{color:var(--cyan);font-style:normal}
+.sep{color:var(--suave);margin:0 .6rem}
+.rejilla{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rejilla figure{margin:0;background:var(--panel);box-shadow:0 0 0 1px var(--linea)}
+.rejilla figcaption{display:flex;justify-content:space-between;padding:.45rem .65rem;
+  font-size:11px;color:var(--suave);border-top:1px solid var(--linea)}
+.dir{font-variant-numeric:tabular-nums;color:var(--verde)}
+footer{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--linea);
+  color:var(--suave);font-size:12px}
+
+/* Aviso de trabajo en curso: tiene que verse antes que las cifras, porque un
+   100% mal leido hace mas dano que no ponerlo. */
+.aviso{background:#3a2a10;border-left:3px solid var(--oro);margin:1.5rem auto;
+  padding:1rem 1.2rem;max-width:900px;border-radius:4px}
+.aviso p{margin:0;color:var(--tinta);font-size:15px;line-height:1.65}
+.galeria{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1.5rem;margin:1.5rem 0}
+.galeria figure{margin:0}
+.galeria img{width:100%;height:auto;image-rendering:pixelated;
+  border:1px solid var(--linea);border-radius:3px}
+.galeria figcaption{color:var(--suave);font-size:13px;margin-top:.5rem}
+audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
+</style>
+<div class="w"><nav class="top"><a href="index.html">Portada</a><a href="EMPEZAR.html">Empezar</a><a href="EL-JUEGO.html" style=color:var(--tinta)>El juego</a><a href="EL-CARTUCHO.html">El cartucho</a><a href="EL-CODIGO.html">El código</a><a href="HALLAZGOS.html">Hallazgos</a><a href="EN-EL-EMULADOR.html">En el emulador</a><a href="PREGUNTAS-ABIERTAS.html">Preguntas abiertas</a><a href="../THE-GAME.html" style="margin-left:auto;color:var(--oro)">English</a></nav>
+<h1 id="el-juego">El juego</h1>
+<p><img src="../imagenes/rotulo.png" alt="El rótulo"></p>
+<p>Charlie, el payaso, tiene que cruzar la pista en <b>cinco números de circo</b>. Cada número es un tipo de fase, el byte <code>(0xE052)</code>, y el cartucho reparte por él todo lo que cambia: el decorado, el arranque, los móviles y el cuadro. <b>Se empieza por el león</b>, medido corriendo el cartucho sin forzar nada.</p>
+<p>Las cinco imágenes de abajo <b>no son capturas</b>: son el cartucho ejecutándose en <code>tools/corre_circus.py</code>. Cotejadas contra openMSX en los mismos instantes, dan cero bytes de VRAM distintos.</p>
+<h2 id="0-el-trapecio">0 · El trapecio</h2>
+<p>Charlie salta de un trapecio a otro, con la cama elástica abajo. Los dos trapecios se balancean cada uno a su ritmo: cuatro bytes de ritmo puestos a mano en <code>0x6161</code> y una sola tabla de duraciones, <code>0x5F61</code>, para los dos. Es el cuadro más cargado del cartucho: seis llamadas en <code>0x4CC2</code>.</p>
+<p><img src="../imagenes/en-pista-0-trapecio.png" alt="El trapecio"></p>
+<h2 id="1-el-leon">1 · El león</h2>
+<p>Charlie monta el león y salta los aros de fuego. Charlie son cuatro sprites, y aquí la misma rutina, <code>0x5087</code>, añade tres más para el león; por eso la tabla de poses de este número (<code>0x5116</code>) gasta <b>siete bytes por pose</b> y la de los demás cuatro. Los aros son cuatro móviles que arrancan en la fila <code>0x48</code>, y el aro está pintado con <b>tiles del fondo</b>, no con sprites.</p>
+<p><img src="../imagenes/en-pista-1-leon.png" alt="El león"></p>
+<h2 id="2-la-cuerda-floja">2 · La cuerda floja</h2>
+<p>Por la cuerda vienen los monos. El que va suelto vive en <code>0xE1B0</code> y entra por <code>(0xD0, 0x50)</code>.</p>
+<p><img src="../imagenes/en-pista-2-cuerda-floja.png" alt="La cuerda floja"></p>
+<h2 id="3-las-bolas">3 · Las bolas</h2>
+<p>Charlie en equilibrio sobre una bola y las demás rodando hacia él: son los recogibles de <code>0xE170</code>.</p>
+<p><img src="../imagenes/en-pista-3-bolas.png" alt="Las bolas"></p>
+<h2 id="4-el-caballo">4 · El caballo</h2>
+<p>Charlie a caballo, con lo que hay que saltar llegando por un guion propio (<code>0x5C8E</code>). El caballo son tres sprites, con un paso que cambia cada cuatro cuadros (<code>0x50D8</code>).</p>
+<p><img src="../imagenes/en-pista-4-caballo.png" alt="El caballo"></p>
+<h2 id="el-bonus">El BONUS</h2>
+<p>Arranca en <b>8000</b>, en BCD (<code>0x42F8</code>), y baja cada ocho cuadros.</p>
+<h2 id="los-cinco-decorados">Los cinco decorados</h2>
+<p>Tal como quedan al acabar el montaje, antes de que el juego ponga a nadie en pista. Salen de la cadena de <code>0x5FD6</code>, reescrita en <code>tools/graficos.py</code>, y están cotejados contra openMSX en <code>0x4C3C</code>: cero bytes.</p>
+<p><img src="../imagenes/atraccion-0-trapecio.png" alt="El trapecio"></p>
+<p><img src="../imagenes/atraccion-1-leon.png" alt="El león"></p>
+<p><img src="../imagenes/atraccion-2-cuerda-floja.png" alt="La cuerda floja"></p>
+<p><img src="../imagenes/atraccion-3-bolas.png" alt="Las bolas"></p>
+<p><img src="../imagenes/atraccion-4-caballo.png" alt="El caballo"></p>
+<footer><p><em>Circus Charlie</em> lo publico Konami para MSX en 1984; su numero de catalogo es RC-712 y son 16 KB. Todos los derechos sobre el juego siguen siendo de sus titulares. Este trabajo es de preservacion, estudio y documentacion, y la imagen del cartucho no se distribuye.</p></footer></div>

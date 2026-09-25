@@ -50,12 +50,12 @@ for _en, _es in _PAREJAS:
     PAREJA[_en] = _es
     PAREJA[_es] = _en
 
-# El pie va en el idioma de la pagina. El cartucho no firma: no hay creditos ni
-# iniciales en ninguna parte del binario, ni la marca oculta que otros de la casa
-# esconden al final de la ROM. El numero de catalogo sale del catalogo.
+# El pie va en el idioma de la pagina. El cartucho no lleva la marca oculta que
+# otros de la casa esconden al final de la ROM (tools/busca_marca_konami.py: sin
+# marca en los 16384 bytes). El numero de catalogo sale del catalogo.
 PIE = {
-    "es": "<em>Konami's Ping Pong</em> lo publico Konami para MSX en 1985; su numero de catalogo es RC-731 y son 16 KB. Todos los derechos sobre el juego siguen siendo de sus titulares. Este trabajo es de preservacion, estudio y documentacion, y la imagen del cartucho no se distribuye.",
-    "en": "<em>Konami's Ping Pong</em> was published by Konami for the MSX in 1985; its catalogue number is RC-731 and it is 16 KB. All rights in the game remain with their holders. This is preservation, study and documentation work, and the cartridge image is not distributed.",
+    "es": "<em>Circus Charlie</em> lo publico Konami para MSX en 1984; su numero de catalogo es RC-712 y son 16 KB. Todos los derechos sobre el juego siguen siendo de sus titulares. Este trabajo es de preservacion, estudio y documentacion, y la imagen del cartucho no se distribuye.",
+    "en": "<em>Circus Charlie</em> was published by Konami for the MSX in 1984; its catalogue number is RC-712 and it is 16 KB. All rights in the game remain with their holders. This is preservation, study and documentation work, and the cartridge image is not distributed.",
 }
 
 
@@ -233,7 +233,7 @@ def main(docdir, idioma="en"):
         dst = os.path.join(docdir, fn[:-3] + ".html")
         texto = open(src, encoding="utf-8").read()
         m = re.search(r"^#\s+(.*)$", texto, re.M)
-        titulo = (m.group(1) if m else fn[:-3]) + " — Konami's Ping Pong (Konami, 1985)"
+        titulo = (m.group(1) if m else fn[:-3]) + " — Circus Charlie (Konami, 1984)"
         open(dst, "w", encoding="utf-8").write(
             convierte(texto, titulo, fn[:-3] + ".html", idioma))
         print(f"  {fn} -> {os.path.basename(dst)}")
