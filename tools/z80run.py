@@ -1,31 +1,20 @@
 #!/usr/bin/env python3
 """Un Z80 pequeno para EJECUTAR de verdad rutinas del cartucho.
 
-Por que hace falta. El mapa de Super Cobra no se puede leer: hay que montarlo,
-y la rutina que lo monta (0x4626) escribe con un `ld (IX+A),B` que el Z80 no
-tiene y que el cartucho se fabrica copiandose siete bytes a la RAM (0x41DD ->
-0xE5F8). Reescribir eso a mano en Python es adivinar; ejecutarlo no lo es.
+Aqui lo usa tools/musica.py: el motor de sonido del banco 13 se ejecuta tal
+cual, cuadro a cuadro, en lugar de reescribirlo a mano en Python.
 
 Que NO es. No es un emulador de MSX: no hay VDP, ni PSG, ni interrupciones, ni
 BIOS, ni ciclos. Es un interprete de instrucciones sobre 64 KB de memoria
-plana, hecho para correr un trozo de codigo hasta su `ret` y mirar lo que ha
-dejado en la RAM.
+plana; quien lo usa pone el mapper y atrapa las llamadas a la BIOS.
 
 La regla que lo hace fiable: **ante un opcode que no implementa, revienta**.
 Nunca sigue adelante suponiendo. Si `corre()` vuelve sin excepcion es que ha
 ejecutado exactamente las instrucciones del cartucho, una por una.
 
 Las banderas que se llevan de verdad son las que este codigo mira: cero, acarreo
-y signo, mas el medio acarreo que necesita `daa` (que aqui no se usa). El resto
-se calculan igual porque cuesta lo mismo, pero no estan probadas.
-
-Uso como libreria:
-
-    from z80run import Z80
-    z = Z80()
-    z.carga(rom, 0x4000)
-    z.corre(0x4106)          # hasta el `ret` que cierra la llamada
-    mapa = z.mem[0xE660:0xE800]
+y signo, mas el medio acarreo que necesita `daa`. El resto se calculan igual
+porque cuesta lo mismo, pero no estan probadas.
 """
 
 FZ, FN, FH, FPV, F3, F5, FC = 0x40, 0x02, 0x10, 0x04, 0x08, 0x20, 0x01
@@ -37,11 +26,7 @@ class ParadaZ80(Exception):
 
 
 class Maquina:
-    """Los puertos que este cartucho toca, y ninguno mas.
-
-    Super Cobra no llama a la BIOS ni una sola vez -no hay un `call` por debajo
-    de 0x4000 en los 8 KB-, asi que con estos cuatro pares de puertos el juego
-    entero corre:
+    """Los puertos de E/S del MSX que una rutina puede tocar:
 
         0x98 / 0x99   el VDP: dato y direccion/registro
         0xA0 / 0xA1   el PSG: registro y dato (aqui solo se apuntan)
@@ -545,7 +530,10 @@ class Z80:
             self._set_r(r, v & ~(1 << ((op >> 3) & 7))); return
         if op >= 0xC0:                                   # set n,r
             self._set_r(r, v | (1 << ((op >> 3) & 7))); return
-        cual = (op >> 3) & 7
+        self._set_r(r, self._rota((op >> 3) & 7, v))
+
+    def _rota(self, cual, v):
+        """Las ocho rotaciones y desplazamientos de CB, con sus banderas."""
         if cual == 0:                                    # rlc
             c = (v >> 7) & 1; v = ((v << 1) | c) & 0xFF
         elif cual == 1:                                  # rrc
@@ -563,7 +551,7 @@ class Z80:
         else:                                            # srl
             c = v & 1; v = (v >> 1) & 0xFF
         self.f = (FZ if v == 0 else 0) | (v & FS) | (FC if c else 0)
-        self._set_r(r, v)
+        return v
 
     def _ed(self, pc0):
         op = self._byte()
@@ -703,6 +691,8 @@ class Z80:
                 self._escribir(dir_, v & ~(1 << b))
             elif sub >= 0xC0:
                 self._escribir(dir_, v | (1 << b))
+            elif (sub & 7) == 6:                         # rlc..srl (ix+d)
+                self._escribir(dir_, self._rota((sub >> 3) & 7, v))
             else:
                 raise ParadaZ80("DD CB 0x%02X sin implementar, en 0x%04X"
                                 % (sub, pc0))

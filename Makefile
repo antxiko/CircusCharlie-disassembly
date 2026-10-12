@@ -145,5 +145,12 @@ web: $(ROM)
 clean:
 	rm -rf $(WORK)/circus.trace.json $(WORK)/circus.blocks
 
-.PHONY: all comprueba trace listado verify sanity test densidad imagenes \
+
+PYMUS ?= python3     # el que tenga numpy y lameenc
+# La musica: el motor del cartucho ejecutado (tools/musica.py) a MP3
+musica: $(ROM)
+	$(PYMUS) tools/musica.py todas docs/audio
+	$(PYMUS) tools/pagina_musica.py
+
+.PHONY: musica all comprueba trace listado verify sanity test densidad imagenes \
         pares coteja web clean montaje coteja_montaje coteja_arranque \n        coteja_pista
