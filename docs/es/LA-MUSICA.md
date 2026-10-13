@@ -6,15 +6,35 @@ Todo lo que suena aquí sale de ejecutar el motor de sonido del cartucho (`suena
 
 Las escrituras al PSG se han comparado cuadro a cuadro con las de openMSX (C-BIOS MSX1 japonés). En todos los cuadros el PSG queda igual:
 
-- el sonido del final (0x8F) entera, 170 cuadros, pedida a la fuerza y en la partida tal como el juego la pide.
+- el sonido del final (0x8F) entero, 170 cuadros, pedida a la fuerza y en la partida tal como el juego la pide;
+- la 0x89 entera, 1154 cuadros, y la 0x8B entera, 1538, con el paso 6 que les da el juego;
+- los primeros 384 cuadros de la 0x8D, con el paso 4 (la pieza dura 3106 y vuelve al cuadro 33; el juego la vuelve a pedir a los 384).
 
 El timbre no está cotejado: es el de un AY-3-8910 de manual, no una grabación del emulador. Las sondas están en `tools/omsx_psg.tcl` y `tools/coteja_psg.py`.
 
-## Lo que no se publica
+## El paso que llega en A'
 
-Es la única música que el listado pide con un `ld a` y que suena de verdad (el 0x94 del arranque es silencio y el 0x11 es un efecto). La tabla guarda además las pistas 0x88 a 0x90, y aquí no se publican porque el cotejo no cuadra: con la 0x8B pedida a la fuerza, openMSX y este motor dan lo mismo durante 229 cuadros y luego la duración de la primera nota es 232 cuadros en el emulador y 256 aquí. La causa no está resuelta. Lo más probable es que el juego deje en la RAM de las voces un valor, el paso de las notas (+10), que estas pistas no fijan y que aquí parte de cero, pero no se ha comprobado.
+Estas pistas no fijan la duración de sus notas: la duración sale de un «paso» que `pide_un_sonido` copia del registro A' (el `ex af,af'` que el juego hace justo antes de llamar). El juego pone 6 en las músicas 0x89 y 0x8B de arranque de fase, 4 en la 0x8D, y 3 o 5 en los avisos de que se acaba el tiempo (la misma partitura, a otra velocidad). Con el A' a cero la primera nota duraba 256 cuadros en vez de 232 y las pistas no cuadraban con openMSX; con el A' del juego, sí. Aquí sólo están las versiones de arranque de fase; los avisos de tiempo (paso 3 o 5) no se publican. Las pistas 0x88, 0x8A, 0x8C, 0x8E y 0x90 de la tabla no las pide ninguna rutina con un `ld a` y no se publican.
 
 ## Las músicas
+
+**La música de arranque de la fase** (0x89)
+
+Lo pide `L_60D8` (con el paso 6 en A') y, con el paso 3 o 5, `avisa_de_que_queda_poco`; dura 19,2 s y vuelve a empezar en el segundo 0,0.
+
+<audio controls preload="none" src="../audio/musica_89.mp3?v=8050c4c4"></audio>
+
+**La música de la fase** (0x8B)
+
+Lo pide `pon_al_jugador_en_su_sitio` (con el paso 6 en A') y, con el paso 5, `avisa_de_que_queda_poco`; dura 25,6 s y vuelve a empezar en el segundo 0,0.
+
+<audio controls preload="none" src="../audio/musica_8B.mp3?v=8acc900b"></audio>
+
+**La música de otra fase** (0x8D)
+
+Lo pide `L_6161` (con el paso 4 en A') y, con el paso 3, `avisa_de_que_queda_poco`; dura 51,8 s y vuelve a empezar en el segundo 0,6.
+
+<audio controls preload="none" src="../audio/musica_8D.mp3?v=9bccf081"></audio>
 
 **El sonido del final** (0x8F)
 

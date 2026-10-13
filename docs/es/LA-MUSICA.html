@@ -87,11 +87,20 @@ audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
 <p>Todo lo que suena aquí sale de ejecutar el motor de sonido del cartucho (<code>suena_un_cuadro</code>, 0x7A3D, y <code>pide_un_sonido</code>, 0x7BA2, que le reparte las voces; lo llama la interrupción en 0x4030) en un Z80 emulado, cuadro a cuadro y a 60 por segundo, igual que lo llama el juego. Lo que el motor escribe en el PSG pasa a sonido con un AY-3-8910 (<code>tools/musica.py</code>). Cada MP3 es la pieza entera hasta donde vuelve a empezar, más 8 segundos de la vuelta apagándose; las que no se repiten acaban donde acaba el motor.</p>
 <h2 id="cotejado-con-openmsx">Cotejado con openMSX</h2>
 <p>Las escrituras al PSG se han comparado cuadro a cuadro con las de openMSX (C-BIOS MSX1 japonés). En todos los cuadros el PSG queda igual:</p>
-<ul><li>el sonido del final (0x8F) entera, 170 cuadros, pedida a la fuerza y en la partida tal como el juego la pide.</li></ul>
+<ul><li>el sonido del final (0x8F) entero, 170 cuadros, pedida a la fuerza y en la partida tal como el juego la pide;</li><li>la 0x89 entera, 1154 cuadros, y la 0x8B entera, 1538, con el paso 6 que les da el juego;</li><li>los primeros 384 cuadros de la 0x8D, con el paso 4 (la pieza dura 3106 y vuelve al cuadro 33; el juego la vuelve a pedir a los 384).</li></ul>
 <p>El timbre no está cotejado: es el de un AY-3-8910 de manual, no una grabación del emulador. Las sondas están en <code>tools/omsx_psg.tcl</code> y <code>tools/coteja_psg.py</code>.</p>
-<h2 id="lo-que-no-se-publica">Lo que no se publica</h2>
-<p>Es la única música que el listado pide con un <code>ld a</code> y que suena de verdad (el 0x94 del arranque es silencio y el 0x11 es un efecto). La tabla guarda además las pistas 0x88 a 0x90, y aquí no se publican porque el cotejo no cuadra: con la 0x8B pedida a la fuerza, openMSX y este motor dan lo mismo durante 229 cuadros y luego la duración de la primera nota es 232 cuadros en el emulador y 256 aquí. La causa no está resuelta. Lo más probable es que el juego deje en la RAM de las voces un valor, el paso de las notas (+10), que estas pistas no fijan y que aquí parte de cero, pero no se ha comprobado.</p>
+<h2 id="el-paso-que-llega-en-a">El paso que llega en A&#x27;</h2>
+<p>Estas pistas no fijan la duración de sus notas: la duración sale de un «paso» que <code>pide_un_sonido</code> copia del registro A&#x27; (el <code>ex af,af&#x27;</code> que el juego hace justo antes de llamar). El juego pone 6 en las músicas 0x89 y 0x8B de arranque de fase, 4 en la 0x8D, y 3 o 5 en los avisos de que se acaba el tiempo (la misma partitura, a otra velocidad). Con el A&#x27; a cero la primera nota duraba 256 cuadros en vez de 232 y las pistas no cuadraban con openMSX; con el A&#x27; del juego, sí. Aquí sólo están las versiones de arranque de fase; los avisos de tiempo (paso 3 o 5) no se publican. Las pistas 0x88, 0x8A, 0x8C, 0x8E y 0x90 de la tabla no las pide ninguna rutina con un <code>ld a</code> y no se publican.</p>
 <h2 id="las-musicas">Las músicas</h2>
+<p><b>La música de arranque de la fase</b> (0x89)</p>
+<p>Lo pide <code>L_60D8</code> (con el paso 6 en A&#x27;) y, con el paso 3 o 5, <code>avisa_de_que_queda_poco</code>; dura 19,2 s y vuelve a empezar en el segundo 0,0.</p>
+<audio controls preload="none" src="../audio/musica_89.mp3?v=8050c4c4"></audio>
+<p><b>La música de la fase</b> (0x8B)</p>
+<p>Lo pide <code>pon_al_jugador_en_su_sitio</code> (con el paso 6 en A&#x27;) y, con el paso 5, <code>avisa_de_que_queda_poco</code>; dura 25,6 s y vuelve a empezar en el segundo 0,0.</p>
+<audio controls preload="none" src="../audio/musica_8B.mp3?v=8acc900b"></audio>
+<p><b>La música de otra fase</b> (0x8D)</p>
+<p>Lo pide <code>L_6161</code> (con el paso 4 en A&#x27;) y, con el paso 3, <code>avisa_de_que_queda_poco</code>; dura 51,8 s y vuelve a empezar en el segundo 0,6.</p>
+<audio controls preload="none" src="../audio/musica_8D.mp3?v=9bccf081"></audio>
 <p><b>El sonido del final</b> (0x8F)</p>
 <p>Lo pide <code>estado_por_la_tabla_5000</code>; dura 2,8 s.</p>
 <audio controls preload="none" src="../audio/musica_8F.mp3?v=30fd0f94"></audio>

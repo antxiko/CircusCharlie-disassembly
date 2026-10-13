@@ -87,11 +87,20 @@ audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
 <p>Everything you hear here comes from running the cartridge&#x27;s own sound engine (<code>suena_un_cuadro</code>, 0x7A3D, and <code>pide_un_sonido</code>, 0x7BA2, which hands it the voices; the interrupt calls it at 0x4030) on an emulated Z80, frame by frame at 60 per second, just as the game calls it. What the engine writes to the PSG is turned into sound with an AY-3-8910 (<code>tools/musica.py</code>). Each MP3 is the whole piece up to where it starts again, plus 8 seconds of the repeat fading out; those that do not repeat end where the engine ends.</p>
 <h2 id="checked-against-openmsx">Checked against openMSX</h2>
 <p>The PSG writes have been compared frame by frame with those of openMSX (C-BIOS MSX1 japonés). In every frame the PSG ends up the same:</p>
-<ul><li>the ending sound (0x8F), whole, 170 frames, both forced and in the game as the game asks for it.</li></ul>
+<ul><li>the ending sound (0x8F), whole, 170 frames, both forced and in the game as the game asks for it;</li><li>0x89, whole, 1154 frames, and 0x8B, whole, 1538, with the step 6 that the game gives them;</li><li>the first 384 frames of 0x8D, with step 4 (the piece lasts 3106 and goes back to frame 33; the game asks for it again at 384).</li></ul>
 <p>The timbre is not checked: it is a textbook AY-3-8910, not a recording of the emulator. The probes are <code>tools/omsx_psg.tcl</code> and <code>tools/coteja_psg.py</code>.</p>
-<h2 id="what-is-not-published">What is not published</h2>
-<p>It is the only music the listing asks for with an <code>ld a</code> that really sounds (0x94 at start-up is silence and 0x11 is an effect). The table also holds tracks 0x88 to 0x90, which are not published here because the check does not match: with 0x8B forced, openMSX and this engine agree for 229 frames and then the first note lasts 232 frames in the emulator and 256 here. The cause is unresolved. The likeliest is that the game leaves in the voices&#x27; RAM a value, the note step (+10), that these tracks do not set and that here starts at zero, but this has not been checked.</p>
+<h2 id="the-step-that-arrives-in-a">The step that arrives in A&#x27;</h2>
+<p>These tracks do not set the length of their notes: it comes from a «step» that <code>pide_un_sonido</code> copies from register A&#x27; (the <code>ex af,af&#x27;</code> the game does just before calling). The game puts 6 in the stage-start tunes 0x89 and 0x8B, 4 in 0x8D, and 3 or 5 in the running-out-of-time warnings (the same score at another speed). With A&#x27; at zero the first note lasted 256 frames instead of 232 and the tracks did not match openMSX; with the game&#x27;s A&#x27; they do. Only the stage-start versions are here; the time warnings (step 3 or 5) are not published. Tracks 0x88, 0x8A, 0x8C, 0x8E and 0x90 of the table are not asked for by any routine with an <code>ld a</code> and are not published.</p>
 <h2 id="the-tunes">The tunes</h2>
+<p><b>The stage start tune</b> (0x89)</p>
+<p>Asked for by <code>L_60D8</code> (con el paso 6 en A&#x27;) y, con el paso 3 o 5, <code>avisa_de_que_queda_poco</code>; lasts 19.2 s and starts again at second 0.0.</p>
+<audio controls preload="none" src="audio/musica_89.mp3?v=8050c4c4"></audio>
+<p><b>The stage tune</b> (0x8B)</p>
+<p>Asked for by <code>pon_al_jugador_en_su_sitio</code> (con el paso 6 en A&#x27;) y, con el paso 5, <code>avisa_de_que_queda_poco</code>; lasts 25.6 s and starts again at second 0.0.</p>
+<audio controls preload="none" src="audio/musica_8B.mp3?v=8acc900b"></audio>
+<p><b>The tune of another stage</b> (0x8D)</p>
+<p>Asked for by <code>L_6161</code> (con el paso 4 en A&#x27;) y, con el paso 3, <code>avisa_de_que_queda_poco</code>; lasts 51.8 s and starts again at second 0.6.</p>
+<audio controls preload="none" src="audio/musica_8D.mp3?v=9bccf081"></audio>
 <p><b>The ending sound</b> (0x8F)</p>
 <p>Asked for by <code>estado_por_la_tabla_5000</code>; lasts 2.8 s.</p>
 <audio controls preload="none" src="audio/musica_8F.mp3?v=30fd0f94"></audio>
